@@ -1,0 +1,17 @@
+export const DEFAULT_FILLERS: readonly string[] = [
+  "um",
+  "uh",
+  "er",
+  "ah",
+  "like",
+  "you know",
+  "i mean",
+  "sort of",
+  "kind of",
+  "basically",
+  "literally",
+  "actually",
+  "right",
+  "okay",
+  "so",
+];

@@ -1,0 +1,6 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - heading "Studio Mode" [level=1] [ref=e3]
+  - button "Open Next.js Dev Tools" [ref=e9] [cursor=pointer]:
+    - img [ref=e10]
+  - alert [ref=e13]
