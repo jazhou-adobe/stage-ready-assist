@@ -1,0 +1,26 @@
+export const DEFAULT_FILLERS: readonly string[] = [
+  // Hesitation sounds — Chrome often drops these but sometimes transcribes variants
+  "um",
+  "umm",
+  "uh",
+  "uhh",
+  "hmm",
+  "hm",
+  "huh",
+  "er",
+  "err",
+  "ah",
+  "ahh",
+  // Common spoken fillers Chrome reliably transcribes
+  "like",
+  "you know",
+  "i mean",
+  "sort of",
+  "kind of",
+  "basically",
+  "literally",
+  "actually",
+  "right",
+  "okay",
+  "so",
+];

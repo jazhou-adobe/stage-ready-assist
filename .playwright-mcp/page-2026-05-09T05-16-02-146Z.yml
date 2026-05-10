@@ -1,0 +1,50 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: PresentPro
+        - generic [ref=e6]: Professional Practice
+      - navigation "Primary" [ref=e7]:
+        - link "Dashboard" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e14]: Dashboard
+        - link "Studio Mode" [disabled] [ref=e15]:
+          - img [ref=e16]
+          - generic [ref=e19]: Studio Mode
+        - link "Analytics" [disabled] [ref=e20]:
+          - img [ref=e21]
+          - generic [ref=e23]: Analytics
+      - generic [ref=e24]:
+        - link "Settings" [ref=e25] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e26]
+          - generic [ref=e29]: Settings
+        - link "Support" [ref=e30] [cursor=pointer]:
+          - /url: /support
+          - img [ref=e31]
+          - generic [ref=e38]: Support
+    - main [ref=e39]:
+      - main [ref=e40]:
+        - generic [ref=e41]:
+          - heading "Overview" [level=1] [ref=e42]
+          - generic [ref=e43]:
+            - img [ref=e45]
+            - img [ref=e49]
+        - generic [ref=e54]:
+          - generic [ref=e55]:
+            - heading "Ready to perfect your delivery?" [level=2] [ref=e56]
+            - paragraph [ref=e57]: Import your latest keynote, pitch, or presentation script to start an AI-assisted practice session.
+          - generic [ref=e58]:
+            - generic [ref=e59]: Title
+            - textbox "Title" [ref=e60]:
+              - /placeholder: Untitled session
+          - generic [ref=e61]:
+            - generic [ref=e62]: Script
+            - textbox "Script" [ref=e63]:
+              - /placeholder: Paste your script here to start practicing immediately...
+          - generic [ref=e64]:
+            - 'button "Quick Start: Import Script" [disabled]':
+              - img
+              - text: "Quick Start: Import Script"
+  - alert [ref=e65]

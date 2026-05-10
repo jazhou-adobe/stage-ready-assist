@@ -1,0 +1,32 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: PresentPro
+        - generic [ref=e6]: Professional Practice
+      - navigation "Primary" [ref=e7]:
+        - link "Dashboard" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e14]: Dashboard
+        - link "Studio Mode" [disabled] [ref=e15]:
+          - img [ref=e16]
+          - generic [ref=e19]: Studio Mode
+        - link "Analytics" [disabled] [ref=e20]:
+          - img [ref=e21]
+          - generic [ref=e23]: Analytics
+      - generic [ref=e24]:
+        - link "Settings" [ref=e25] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e26]
+          - generic [ref=e29]: Settings
+        - link "Support" [ref=e30] [cursor=pointer]:
+          - /url: /support
+          - img [ref=e31]
+          - generic [ref=e38]: Support
+    - main [ref=e39]:
+      - main [ref=e40]:
+        - heading "Session Analytics" [level=1] [ref=e41]
+  - button "Open Next.js Dev Tools" [ref=e47] [cursor=pointer]:
+    - img [ref=e48]
+  - alert [ref=e51]
