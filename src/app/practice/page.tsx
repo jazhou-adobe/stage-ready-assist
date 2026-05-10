@@ -610,11 +610,6 @@ export default function PracticePage() {
           <VolumeCard volume={latestVolume} />
           <MetricCard label="Pauses" value={pausesDisplay} />
           <FillerCard fillerCounts={displayedFillerCounts} />
-          <TrendsCard
-            ref={chartRef}
-            samples={mergedSamples}
-            pauses={audio.pauses}
-          />
         </aside>
       </div>
 
