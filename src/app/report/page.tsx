@@ -245,6 +245,15 @@ function ReportContent({
       >
         <Share2 className="h-4 w-4" />
       </button>
+
+      <div className="mt-4 flex justify-center border-t border-slate-200 pt-6 pb-2">
+        <Link
+          href="/feedback"
+          className="text-sm text-slate-500 transition-colors hover:text-slate-700 underline underline-offset-4"
+        >
+          Leave feedback on this report
+        </Link>
+      </div>
     </div>
   );
 }

@@ -47,3 +47,13 @@ export type RecentScript = {
   savedAt: number;
   lastSession?: SessionSummary;
 };
+
+export type FeedbackCategory = "bug" | "feature" | "general";
+
+export type FeedbackEntry = {
+  id: string;
+  subject: string;
+  category: FeedbackCategory;
+  message: string;
+  submittedAt: number;
+};

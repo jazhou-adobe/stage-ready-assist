@@ -7,6 +7,7 @@ import {
   BarChart3,
   LayoutDashboard,
   LifeBuoy,
+  MessageSquare,
   Presentation,
   Settings,
 } from "lucide-react";
@@ -116,6 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   ];
 
   const secondaryNav: NavItem[] = [
+    { label: "Feedback", href: "/feedback", icon: MessageSquare },
     { label: "Settings", href: "/settings", icon: Settings },
     { label: "Support", href: "/support", icon: LifeBuoy },
   ];
