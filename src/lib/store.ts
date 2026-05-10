@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
-import type { FeedbackEntry, RecentScript, SessionResult, SessionSummary } from "./types";
+import type { RecentScript, SessionResult, SessionSummary } from "./types";
 
 const STORAGE_KEY = "stage-ready:v1";
 const FONT_MIN = 14;
@@ -52,7 +52,6 @@ type AppState = {
   hint: HintState;
   scriptFontSize: number;
   recentScripts: RecentScript[];
-  feedbacks: FeedbackEntry[];
 
   setScript: (script: string) => void;
   setScriptTitle: (title: string) => void;
@@ -70,8 +69,6 @@ type AppState = {
   saveScriptSession: (scriptId: string, summary: SessionSummary) => void;
   deleteRecentScript: (id: string) => void;
   clearRecentScripts: () => void;
-
-  addFeedback: (entry: Omit<FeedbackEntry, "id" | "submittedAt">) => void;
 };
 
 const initialHint: HintState = { active: false, sentenceIndex: null };
@@ -85,7 +82,6 @@ export const useAppStore = create<AppState>()(
       hint: initialHint,
       scriptFontSize: FONT_DEFAULT,
       recentScripts: [],
-      feedbacks: [],
 
       setScript: (script) => set({ script }),
       setScriptTitle: (scriptTitle) => set({ scriptTitle }),
@@ -155,17 +151,6 @@ export const useAppStore = create<AppState>()(
         })),
 
       clearRecentScripts: () => set({ recentScripts: [] }),
-
-      addFeedback: ({ subject, category, message }) => {
-        const entry: FeedbackEntry = {
-          id: makeId(),
-          subject: subject.trim(),
-          category,
-          message: message.trim(),
-          submittedAt: Date.now(),
-        };
-        set((s) => ({ feedbacks: [entry, ...s.feedbacks] }));
-      },
     }),
     {
       name: STORAGE_KEY,
@@ -173,7 +158,6 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         recentScripts: state.recentScripts,
         scriptFontSize: state.scriptFontSize,
-        feedbacks: state.feedbacks,
       }),
       skipHydration: true,
     },
