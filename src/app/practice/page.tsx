@@ -100,6 +100,10 @@ export default function PracticePage() {
   const [randomStartIndex, setRandomStartIndex] = useState<number | null>(null);
   const [wordCountOffset, setWordCountOffset] = useState(0);
 
+  // Keep a ref so the scroll handler (attached once) can read current state.
+  const recordStateRef = useRef<RecordState>("idle");
+  useEffect(() => { recordStateRef.current = recordState; }, [recordState]);
+
   const [elapsedSec, setElapsedSec] = useState(0);
   const startedAtRef = useRef<number | null>(null);
   const pausedAccumRef = useRef(0);
@@ -120,6 +124,38 @@ export default function PracticePage() {
   useEffect(() => {
     sentenceRefs.current = sentenceRefs.current.slice(0, sentences.length);
   }, [sentences.length]);
+
+  // While idle, auto-highlight the sentence nearest the scroll center.
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    let tid: ReturnType<typeof setTimeout> | null = null;
+
+    const handler = () => {
+      if (recordStateRef.current !== "idle") return;
+      if (tid) clearTimeout(tid);
+      tid = setTimeout(() => {
+        const containerRect = container.getBoundingClientRect();
+        const mid = containerRect.top + containerRect.height / 2;
+        let closest = 0;
+        let closestDist = Infinity;
+        sentenceRefs.current.forEach((el, i) => {
+          if (!el) return;
+          const r = el.getBoundingClientRect();
+          const dist = Math.abs(r.top + r.height / 2 - mid);
+          if (dist < closestDist) { closestDist = dist; closest = i; }
+        });
+        setRandomStartIndex(closest);
+      }, 80);
+    };
+
+    container.addEventListener("scroll", handler, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", handler);
+      if (tid) clearTimeout(tid);
+    };
+  }, []);
 
   // Recover script from most recent entry after store rehydrates on page refresh
   const setScript = useAppStore((s) => s.setScript);
