@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
@@ -76,6 +77,11 @@ function NavRow({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+
+  useEffect(() => {
+    useAppStore.persist.rehydrate();
+  }, []);
+
   const script = useAppStore((s) => s.script);
   const result = useAppStore((s) => s.result);
 
@@ -145,7 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </div>
       </aside>
-      <main className="flex min-w-0 flex-1 flex-col bg-slate-50 text-slate-900">
+      <main className="flex min-w-0 flex-1 flex-col bg-slate-950 text-slate-100">
         {children}
       </main>
     </div>

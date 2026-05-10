@@ -10,7 +10,7 @@ import {
   type CSSProperties,
 } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MoreHorizontal, Pause, Play } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Pause, Play, Square } from "lucide-react";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
@@ -78,6 +78,7 @@ export default function PracticePage() {
   const hint = useAppStore((s) => s.hint);
   const showHint = useAppStore((s) => s.showHint);
   const clearHint = useAppStore((s) => s.clearHint);
+  const recentScripts = useAppStore((s) => s.recentScripts);
   const setResult = useAppStore((s) => s.setResult);
   const saveScriptSession = useAppStore((s) => s.saveScriptSession);
 
@@ -88,6 +89,8 @@ export default function PracticePage() {
   const sentences = useMemo(() => splitSentences(script), [script]);
 
   const [recordState, setRecordState] = useState<RecordState>("idle");
+  const [displayedFillerCounts, setDisplayedFillerCounts] = useState<Record<string, number>>({});
+  const fillerCountsRef = useRef<Record<string, number>>({});
   const [masked, setMasked] = useState(false);
   const [restartOpen, setRestartOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -112,6 +115,29 @@ export default function PracticePage() {
   useEffect(() => {
     sentenceRefs.current = sentenceRefs.current.slice(0, sentences.length);
   }, [sentences.length]);
+
+  // Recover script from most recent entry after store rehydrates on page refresh
+  const setScript = useAppStore((s) => s.setScript);
+  const setScriptTitle = useAppStore((s) => s.setScriptTitle);
+  useEffect(() => {
+    if (script.trim() || !recentScripts.length) return;
+    const latest = recentScripts[0];
+    setScriptTitle(latest.title);
+    setScript(latest.text);
+  }, [recentScripts, script, setScript, setScriptTitle]);
+
+  // Keep ref in sync with latest counts (no interval dependency on the object)
+  useEffect(() => {
+    fillerCountsRef.current = speech.fillerCounts;
+  }, [speech.fillerCounts]);
+
+  // Stable 5-second interval — reads from ref so it never restarts
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setDisplayedFillerCounts({ ...fillerCountsRef.current });
+    }, 5_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     lastWpmRef.current = speech.wpm;
@@ -155,15 +181,6 @@ export default function PracticePage() {
     setElapsedSec(0);
     setRecordState("recording");
   }, [audio, speech, webcam]);
-
-  const autoStartedRef = useRef(false);
-  useEffect(() => {
-    if (autoStartedRef.current) return;
-    if (!script || !script.trim()) return;
-    autoStartedRef.current = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    startAll();
-  }, [script, startAll]);
 
   useEffect(() => {
     lastWordChangeAtRef.current = performance.now();
@@ -407,12 +424,14 @@ export default function PracticePage() {
   const isPaused = recordState === "paused";
 
   const wpmDisplay = Math.round(speech.wpm).toString();
-  const latestVolume = mergedSamples.length
-    ? mergedSamples[mergedSamples.length - 1].volume
-    : 0;
-  const volumePercent = Math.round(latestVolume * 100);
+  const latestVolume = useMemo(() => {
+    if (mergedSamples.length === 0) return 0;
+    const latest = mergedSamples[mergedSamples.length - 1];
+    const cutoff = latest.t - 5_000;
+    const window = mergedSamples.filter((s) => s.t >= cutoff);
+    return window.reduce((s, x) => s + x.volume, 0) / window.length;
+  }, [mergedSamples]);
   const pausesDisplay = audio.pauses.length.toString();
-  const fillersDisplay = sumValues(speech.fillerCounts).toString();
 
   const permissionError =
     audio.error ??
@@ -433,7 +452,7 @@ export default function PracticePage() {
         "overflow-hidden",
       )}
     >
-      <div className="grid h-full grid-cols-[1fr_220px] gap-4 px-6 pt-6 pb-32">
+      <div className="grid h-full grid-cols-[2fr_1fr] gap-4 px-6 pt-6 pb-32">
         <section className="relative overflow-hidden rounded-2xl">
           <div className="absolute left-2 top-2 z-20 flex items-center gap-3">
             <button
@@ -514,9 +533,9 @@ export default function PracticePage() {
             large
           />
           <MetricCard label="WPM" value={wpmDisplay} large />
-          <VolumeCard percent={volumePercent} />
+          <VolumeCard volume={latestVolume} />
           <MetricCard label="Pauses" value={pausesDisplay} />
-          <MetricCard label="Fillers" value={fillersDisplay} />
+          <FillerCard fillerCounts={displayedFillerCounts} />
           <TrendsCard
             ref={chartRef}
             samples={mergedSamples}
@@ -634,16 +653,16 @@ function MetricCard({
     <div
       className={cn(
         "rounded-xl border border-neutral-800/80 bg-gradient-to-b from-neutral-900/90 to-neutral-950/90",
-        "px-3 py-2.5 backdrop-blur",
+        "px-4 py-3.5 backdrop-blur",
       )}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
         {label}
       </div>
       <div
         className={cn(
-          "mt-1 leading-none text-neutral-100",
-          large ? "text-2xl font-semibold" : "text-base font-semibold",
+          "mt-1.5 leading-none text-neutral-100",
+          large ? "text-4xl font-semibold" : "text-2xl font-semibold",
           mono && "font-mono tabular-nums",
         )}
       >
@@ -653,27 +672,92 @@ function MetricCard({
   );
 }
 
-function VolumeCard({ percent }: { percent: number }) {
-  const clamped = Math.max(0, Math.min(100, percent));
+type VolumeTier = "too-low" | "low" | "normal" | "high" | "too-high";
+
+const VOLUME_TIERS: { max: number; tier: VolumeTier; label: string }[] = [
+  { max: 0.02, tier: "too-low",  label: "Too Low"  },
+  { max: 0.05, tier: "low",      label: "Low"      },
+  { max: 0.14, tier: "normal",   label: "Normal"   },
+  { max: 0.25, tier: "high",     label: "High"     },
+  { max: Infinity, tier: "too-high", label: "Too High" },
+];
+
+const TIER_BAR_COLORS: Record<VolumeTier, string> = {
+  "too-low":  "bg-slate-500",
+  "low":      "bg-amber-400",
+  "normal":   "bg-emerald-500",
+  "high":     "bg-amber-400",
+  "too-high": "bg-red-500",
+};
+
+const TIER_LABEL_COLORS: Record<VolumeTier, string> = {
+  "too-low":  "text-slate-400",
+  "low":      "text-amber-400",
+  "normal":   "text-emerald-400",
+  "high":     "text-amber-400",
+  "too-high": "text-red-400",
+};
+
+function FillerCard({ fillerCounts }: { fillerCounts: Record<string, number> }) {
+  const entries = Object.entries(fillerCounts).sort((a, b) => b[1] - a[1]);
+
   return (
     <div
       className={cn(
         "rounded-xl border border-neutral-800/80 bg-gradient-to-b from-neutral-900/90 to-neutral-950/90",
-        "px-3 py-2.5 backdrop-blur",
+        "px-4 py-3.5 backdrop-blur",
+      )}
+    >
+      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
+        Filler Words
+      </div>
+      {entries.length === 0 ? (
+        <p className="mt-2 text-sm text-neutral-600">None detected</p>
+      ) : (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {entries.map(([word, count]) => (
+            <span
+              key={word}
+              className="inline-flex items-center gap-1 rounded-full border border-neutral-700 bg-neutral-800/60 px-2 py-0.5 text-xs"
+            >
+              <span className="text-neutral-200">{word}</span>
+              <span className="font-semibold tabular-nums text-amber-400">{count}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getVolumeTier(volume: number): { tier: VolumeTier; label: string } {
+  return VOLUME_TIERS.find((t) => volume < t.max) ?? VOLUME_TIERS[VOLUME_TIERS.length - 1];
+}
+
+function VolumeCard({ volume }: { volume: number }) {
+  const { tier, label } = getVolumeTier(volume);
+  // Map volume to a bar width: 0–0.3 → 0–100%
+  const barPct = Math.min(100, Math.round((volume / 0.3) * 100));
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-neutral-800/80 bg-gradient-to-b from-neutral-900/90 to-neutral-950/90",
+        "px-4 py-3.5 backdrop-blur",
       )}
     >
       <div className="flex items-baseline justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
           Volume
         </span>
-        <span className="text-xs font-semibold tabular-nums text-neutral-300">
-          {clamped}%
+        <span className={cn("text-base font-semibold", TIER_LABEL_COLORS[tier])}>
+          {label}
         </span>
       </div>
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+      <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-neutral-800">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-[width]"
-          style={{ width: `${clamped}%` }}
+          className={cn("h-full rounded-full transition-[width] duration-150", TIER_BAR_COLORS[tier])}
+          style={{ width: `${barPct}%` }}
         />
       </div>
     </div>
@@ -691,7 +775,7 @@ const TrendsCard = forwardRef<MetricsChartHandle, TrendsCardProps>(
       <div
         className={cn(
           "rounded-xl border border-neutral-800/80 bg-gradient-to-b from-neutral-900/90 to-neutral-950/90",
-          "px-3 py-2.5 backdrop-blur",
+          "px-4 py-3.5 backdrop-blur",
         )}
       >
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
@@ -712,6 +796,7 @@ const TrendsCard = forwardRef<MetricsChartHandle, TrendsCardProps>(
 );
 
 function ControlPill({
+  recordState,
   isPaused,
   onTogglePauseResume,
   scriptFontSize,
@@ -735,6 +820,8 @@ function ControlPill({
   onStop: () => void;
   onHelp: () => void;
 }) {
+  const isIdle = recordState === "idle";
+
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
       <div
@@ -746,20 +833,37 @@ function ControlPill({
         <button
           type="button"
           onClick={onTogglePauseResume}
-          aria-label={isPaused ? "Resume" : "Pause"}
-          aria-pressed={!isPaused}
+          aria-label={isIdle ? "Start recording" : isPaused ? "Resume" : "Pause"}
+          aria-pressed={!isIdle && !isPaused}
           className={cn(
             "flex h-11 w-11 items-center justify-center rounded-full",
-            "bg-white text-neutral-900 transition hover:bg-neutral-200",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+            "transition focus:outline-none focus-visible:ring-2",
+            isIdle
+              ? "bg-emerald-500 text-white hover:bg-emerald-400 focus-visible:ring-emerald-300/50"
+              : "bg-white text-neutral-900 hover:bg-neutral-200 focus-visible:ring-white/40",
           )}
         >
-          {isPaused ? (
-            <Play className="h-5 w-5 fill-current" />
-          ) : (
+          {!isIdle && !isPaused ? (
             <Pause className="h-5 w-5 fill-current" />
+          ) : (
+            <Play className="h-5 w-5 fill-current" />
           )}
         </button>
+
+        {!isIdle && (
+          <button
+            type="button"
+            onClick={() => setTimeout(onStop, 0)}
+            aria-label="Stop recording"
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-full",
+              "bg-red-500/20 text-red-400 transition hover:bg-red-500/30 hover:text-red-300",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50",
+            )}
+          >
+            <Square className="h-5 w-5 fill-current" />
+          </button>
+        )}
 
         <span aria-hidden className="h-7 w-px bg-neutral-700/80" />
 
@@ -828,20 +932,15 @@ function ControlPill({
                   </span>
                   Mask script
                 </Menu.CheckboxItem>
-                <MenuItemRow
-                  onClick={() => {
-                    setTimeout(onRestart, 0);
-                  }}
-                >
-                  Restart
-                </MenuItemRow>
-                <MenuItemRow
-                  onClick={() => {
-                    setTimeout(onStop, 0);
-                  }}
-                >
-                  Stop
-                </MenuItemRow>
+                {!isIdle && (
+                  <MenuItemRow
+                    onClick={() => {
+                      setTimeout(onRestart, 0);
+                    }}
+                  >
+                    Restart
+                  </MenuItemRow>
+                )}
                 <MenuItemRow
                   onClick={() => {
                     setTimeout(onHelp, 0);
@@ -1003,7 +1102,7 @@ function HelpDialog({
             Keyboard shortcuts
           </Dialog.Title>
           <ul className="mt-3 space-y-2 text-sm text-neutral-300">
-            <ShortcutRow keys={["Space"]} label="Pause / resume" />
+            <ShortcutRow keys={["Space"]} label="Start / Pause / Resume" />
             <ShortcutRow keys={["Click"]} label="Toggle masked script" />
             <ShortcutRow keys={["Esc"]} label="Close menus and dialogs" />
           </ul>

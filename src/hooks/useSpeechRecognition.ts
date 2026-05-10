@@ -78,7 +78,8 @@ export type UseSpeechRecognitionResult = {
   error: string | null;
 };
 
-const WPM_WINDOW_MS = 10_000;
+const WPM_WINDOW_SEC = 15;
+const WPM_WINDOW_MS = WPM_WINDOW_SEC * 1_000;
 
 const escapeRegExp = (s: string): string =>
   s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -136,25 +137,43 @@ export function useSpeechRecognition(
   const [wpm, setWpm] = useState(0);
   const [fillers, setFillers] = useState<FillerEvent[]>([]);
   const [fillerCounts, setFillerCounts] = useState<Record<string, number>>({});
+  // Committed = from final results; interim = current unconfirmed segment
+  const committedFillerCountsRef = useRef<Record<string, number>>({});
+  const interimFillerCountsRef = useRef<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const stateRef = useRef<RecState>("idle");
   const startedAtRef = useRef<number>(0);
-  const wordTimesRef = useRef<number[]>([]);
+  // Two separate queues so interim can be replaced cleanly when final arrives
+  const finalWordTimesRef = useRef<number[]>([]);
+  const interimWordTimesRef = useRef<number[]>([]);
+  // Track how many words were in the last interim result to detect deltas
+  const lastInterimWordCountRef = useRef<number>(0);
+
+  const mergeFillerCounts = useCallback(() => {
+    const merged: Record<string, number> = { ...committedFillerCountsRef.current };
+    for (const [w, n] of Object.entries(interimFillerCountsRef.current)) {
+      merged[w] = (merged[w] ?? 0) + n;
+    }
+    setFillerCounts(merged);
+  }, []);
 
   const recomputeWpm = useCallback((nowMs: number) => {
     const cutoff = nowMs - WPM_WINDOW_MS;
-    const times = wordTimesRef.current;
-    let firstValidIdx = 0;
-    while (firstValidIdx < times.length && times[firstValidIdx] < cutoff) {
-      firstValidIdx++;
-    }
-    if (firstValidIdx > 0) {
-      wordTimesRef.current = times.slice(firstValidIdx);
-    }
-    const wordsInWindow = wordTimesRef.current.length;
-    setWpm(wordsInWindow * 6);
+
+    // Discard timestamps older than the window from both queues
+    let i = 0;
+    while (i < finalWordTimesRef.current.length && finalWordTimesRef.current[i] < cutoff) i++;
+    if (i > 0) finalWordTimesRef.current = finalWordTimesRef.current.slice(i);
+
+    let j = 0;
+    while (j < interimWordTimesRef.current.length && interimWordTimesRef.current[j] < cutoff) j++;
+    if (j > 0) interimWordTimesRef.current = interimWordTimesRef.current.slice(j);
+
+    // Count words in window and extrapolate to a full minute
+    const count = finalWordTimesRef.current.length + interimWordTimesRef.current.length;
+    setWpm((count / WPM_WINDOW_SEC) * 60);
   }, []);
 
   const handleFinalChunk = useCallback(
@@ -163,45 +182,46 @@ export function useSpeechRecognition(
       if (!cleaned) return;
 
       const nowMs = Date.now();
-      const relMs = startedAtRef.current
-        ? nowMs - startedAtRef.current
-        : 0;
+      const relMs = startedAtRef.current ? nowMs - startedAtRef.current : 0;
 
-      const wordCount = countWordsIn(cleaned);
-      if (wordCount > 0) {
-        for (let i = 0; i < wordCount; i++) {
-          wordTimesRef.current.push(nowMs);
-        }
-        setSpokenWordCount((c) => c + wordCount);
-      }
-
-      setTranscript((prev) => (prev ? `${prev} ${cleaned}` : cleaned));
-
+      // Count filler occurrences to exclude them from WPM
+      let fillerWordCount = 0;
       if (fillerRegex) {
         const matches: FillerEvent[] = [];
-        const counts: Record<string, number> = {};
         const re = new RegExp(fillerRegex.source, fillerRegex.flags);
         let m: RegExpExecArray | null;
         while ((m = re.exec(cleaned)) !== null) {
           const word = m[0].toLowerCase();
           matches.push({ word, t: relMs });
-          counts[word] = (counts[word] ?? 0) + 1;
+          committedFillerCountsRef.current[word] =
+            (committedFillerCountsRef.current[word] ?? 0) + 1;
+          fillerWordCount += word.split(/\s+/).length;
         }
-        if (matches.length > 0) {
-          setFillers((prev) => [...prev, ...matches]);
-          setFillerCounts((prev) => {
-            const next = { ...prev };
-            for (const [w, n] of Object.entries(counts)) {
-              next[w] = (next[w] ?? 0) + n;
-            }
-            return next;
-          });
-        }
+        // Final replaces interim — clear interim state
+        interimFillerCountsRef.current = {};
+        interimWordTimesRef.current = [];
+        lastInterimWordCountRef.current = 0;
+        if (matches.length > 0) setFillers((prev) => [...prev, ...matches]);
+        mergeFillerCounts();
+      } else {
+        interimWordTimesRef.current = [];
+        lastInterimWordCountRef.current = 0;
       }
 
+      const totalWords = countWordsIn(cleaned);
+      const meaningfulWords = Math.max(0, totalWords - fillerWordCount);
+
+      if (totalWords > 0) setSpokenWordCount((c) => c + totalWords);
+
+      // Push one timestamp per meaningful (non-filler) word into the final queue
+      for (let i = 0; i < meaningfulWords; i++) {
+        finalWordTimesRef.current.push(nowMs);
+      }
+
+      setTranscript((prev) => (prev ? `${prev} ${cleaned}` : cleaned));
       recomputeWpm(nowMs);
     },
-    [fillerRegex, recomputeWpm],
+    [fillerRegex, recomputeWpm, mergeFillerCounts],
   );
 
   const attachHandlers = useCallback(
@@ -219,6 +239,38 @@ export function useSpeechRecognition(
           }
         }
         setInterim(interimText);
+
+        const nowMs = Date.now();
+        const currentInterimWordCount = countWordsIn(interimText);
+        const prevInterimWordCount = lastInterimWordCountRef.current;
+
+        // Delta-based interim WPM: only add timestamps for newly spoken words,
+        // trim if STT corrected downward
+        if (currentInterimWordCount > prevInterimWordCount) {
+          for (let k = prevInterimWordCount; k < currentInterimWordCount; k++) {
+            interimWordTimesRef.current.push(nowMs);
+          }
+        } else if (currentInterimWordCount < prevInterimWordCount) {
+          interimWordTimesRef.current = interimWordTimesRef.current.slice(
+            0,
+            currentInterimWordCount,
+          );
+        }
+        lastInterimWordCountRef.current = currentInterimWordCount;
+        recomputeWpm(nowMs);
+
+        // Scan interim for fillers (catches um/hmm that browsers strip from finals)
+        if (fillerRegex) {
+          const counts: Record<string, number> = {};
+          const re = new RegExp(fillerRegex.source, fillerRegex.flags);
+          let m: RegExpExecArray | null;
+          while ((m = re.exec(interimText)) !== null) {
+            const word = m[0].toLowerCase();
+            counts[word] = (counts[word] ?? 0) + 1;
+          }
+          interimFillerCountsRef.current = counts;
+          mergeFillerCounts();
+        }
       };
 
       rec.onerror = (event) => {
@@ -238,7 +290,7 @@ export function useSpeechRecognition(
         }
       };
     },
-    [handleFinalChunk],
+    [handleFinalChunk, fillerRegex, mergeFillerCounts],
   );
 
   const ensureRecognition = useCallback((): SpeechRecognitionLike | null => {
@@ -267,7 +319,11 @@ export function useSpeechRecognition(
     setWpm(0);
     setFillers([]);
     setFillerCounts({});
-    wordTimesRef.current = [];
+    committedFillerCountsRef.current = {};
+    interimFillerCountsRef.current = {};
+    finalWordTimesRef.current = [];
+    interimWordTimesRef.current = [];
+    lastInterimWordCountRef.current = 0;
     startedAtRef.current = Date.now();
     stateRef.current = "recording";
     try {
@@ -313,6 +369,16 @@ export function useSpeechRecognition(
       // already started
     }
   }, [ensureRecognition]);
+
+  // Recompute WPM every second so it decays when speech stops
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (stateRef.current === "recording") {
+        recomputeWpm(Date.now());
+      }
+    }, 1_000);
+    return () => window.clearInterval(id);
+  }, [recomputeWpm]);
 
   useEffect(() => {
     return () => {

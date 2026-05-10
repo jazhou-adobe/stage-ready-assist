@@ -17,7 +17,8 @@ export type UseAudioMetricsResult = {
 };
 
 const SAMPLE_INTERVAL_MS = 50;
-const SILENCE_THRESHOLD = 0.04;
+const SILENCE_THRESHOLD = 0.05;
+const SILENCE_WINDOW_SAMPLES = 6; // ~300ms rolling average
 const PAUSE_MIN_DURATION_MS = 700;
 const RENDER_TICK_MS = 200;
 
@@ -46,6 +47,7 @@ export function useAudioMetrics(): UseAudioMetricsResult {
   const startTimeRef = useRef<number>(0);
   const lastSampleAtRef = useRef<number>(0);
   const silenceStartRef = useRef<number | null>(null);
+  const recentVolumesRef = useRef<number[]>([]);
 
   const setStateBoth = useCallback((s: AudioMetricsState) => {
     stateRef.current = s;
@@ -93,6 +95,7 @@ export function useAudioMetrics(): UseAudioMetricsResult {
     samplesRef.current = [];
     pausesRef.current = [];
     silenceStartRef.current = null;
+    recentVolumesRef.current = [];
     setSamples([]);
     setPauses([]);
 
@@ -147,7 +150,13 @@ export function useAudioMetrics(): UseAudioMetricsResult {
           const t = now - startTimeRef.current;
           samplesRef.current.push({ t, volume, wpm: 0 });
 
-          if (volume < SILENCE_THRESHOLD) {
+          // Rolling average over last SILENCE_WINDOW_SAMPLES for noise immunity
+          const rv = recentVolumesRef.current;
+          rv.push(volume);
+          if (rv.length > SILENCE_WINDOW_SAMPLES) rv.shift();
+          const avgVolume = rv.reduce((s, v) => s + v, 0) / rv.length;
+
+          if (avgVolume < SILENCE_THRESHOLD) {
             if (silenceStartRef.current === null) {
               silenceStartRef.current = t;
             }
@@ -206,6 +215,8 @@ export function useAudioMetrics(): UseAudioMetricsResult {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
+    silenceStartRef.current = null;
+    recentVolumesRef.current = [];
     const ctx = contextRef.current;
     if (ctx && ctx.state === "running") {
       ctx.suspend().catch(() => {});
@@ -215,6 +226,8 @@ export function useAudioMetrics(): UseAudioMetricsResult {
 
   const resume = useCallback(() => {
     if (stateRef.current !== "paused") return;
+    silenceStartRef.current = null;
+    recentVolumesRef.current = [];
     const ctx = contextRef.current;
     if (ctx && ctx.state === "suspended") {
       ctx.resume().catch(() => {});

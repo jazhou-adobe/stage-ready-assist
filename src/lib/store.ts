@@ -159,6 +159,7 @@ export const useAppStore = create<AppState>()(
         recentScripts: state.recentScripts,
         scriptFontSize: state.scriptFontSize,
       }),
+      skipHydration: true,
     },
   ),
 );
