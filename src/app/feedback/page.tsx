@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useAppStore } from "@/lib/store";
+import { useCallback, useEffect, useState } from "react";
 import type { FeedbackCategory, FeedbackEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +40,7 @@ function FeedbackItemCard({ entry }: { entry: FeedbackEntry }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-slate-100 truncate">
+          <span className="truncate text-sm font-medium text-slate-100">
             {entry.subject}
           </span>
           <span
@@ -52,11 +51,11 @@ function FeedbackItemCard({ entry }: { entry: FeedbackEntry }) {
           >
             {CATEGORY_LABELS[entry.category]}
           </span>
-          <span className="ml-auto text-xs text-slate-500 shrink-0">
+          <span className="ml-auto shrink-0 text-xs text-slate-500">
             {formatDate(entry.submittedAt)}
           </span>
         </div>
-        <p className="mt-1.5 text-sm leading-relaxed text-slate-400 line-clamp-3">
+        <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-slate-400">
           {entry.message}
         </p>
       </div>
@@ -66,8 +65,10 @@ function FeedbackItemCard({ entry }: { entry: FeedbackEntry }) {
 
 function FeedbackList({
   feedbacks,
+  loading,
 }: {
   feedbacks: FeedbackEntry[];
+  loading: boolean;
 }) {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<FeedbackCategory | "all">("all");
@@ -84,10 +85,7 @@ function FeedbackList({
     <button
       key={val}
       type="button"
-      onClick={() => {
-        setFilter(val);
-        setPage(1);
-      }}
+      onClick={() => { setFilter(val); setPage(1); }}
       className={cn(
         "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
         filter === val
@@ -113,7 +111,11 @@ function FeedbackList({
         </div>
       </div>
 
-      {pageItems.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-14">
+          <span className="text-sm text-slate-500">Loading feedback…</span>
+        </div>
+      ) : pageItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-800 bg-slate-900/50 py-14 text-center">
           <p className="text-sm font-medium text-slate-400">No feedback yet</p>
           <p className="text-xs text-slate-600">
@@ -174,25 +176,60 @@ function FeedbackList({
 }
 
 export default function FeedbackPage() {
-  const feedbacks = useAppStore((s) => s.feedbacks);
-  const addFeedback = useAppStore((s) => s.addFeedback);
+  const [feedbacks, setFeedbacks] = useState<FeedbackEntry[]>([]);
+  const [listLoading, setListLoading] = useState(true);
 
   const [subject, setSubject] = useState("");
   const [category, setCategory] = useState<FeedbackCategory>("general");
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const canSubmit = subject.trim().length > 0 && message.trim().length > 0;
+  const fetchFeedbacks = useCallback(async () => {
+    try {
+      const res = await fetch("/api/feedback");
+      if (!res.ok) throw new Error("Failed to load");
+      const data: FeedbackEntry[] = await res.json();
+      setFeedbacks(data);
+    } catch {
+      // silently fail — list just stays empty
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
 
-  function handleSubmit(e: React.FormEvent) {
+  useEffect(() => { fetchFeedbacks(); }, [fetchFeedbacks]);
+
+  const canSubmit = subject.trim().length > 0 && message.trim().length > 0 && !submitting;
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
-    addFeedback({ subject, category, message });
-    setSubject("");
-    setCategory("general");
-    setMessage("");
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, category, message }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Submission failed");
+      }
+      const entry: FeedbackEntry = await res.json();
+      setFeedbacks((prev) => [entry, ...prev]);
+      setSubject("");
+      setCategory("general");
+      setMessage("");
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -208,7 +245,7 @@ export default function FeedbackPage() {
         </p>
       </div>
 
-      {/* Body: two-column layout */}
+      {/* Body */}
       <div className="grid flex-1 grid-cols-1 gap-8 p-8 lg:grid-cols-2">
         {/* Left: Submit form */}
         <div className="flex flex-col gap-6">
@@ -248,9 +285,7 @@ export default function FeedbackPage() {
               <select
                 id="category"
                 value={category}
-                onChange={(e) =>
-                  setCategory(e.target.value as FeedbackCategory)
-                }
+                onChange={(e) => setCategory(e.target.value as FeedbackCategory)}
                 className={cn(
                   "rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5",
                   "text-sm text-slate-100",
@@ -274,7 +309,7 @@ export default function FeedbackPage() {
                 id="message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Describe your feedback in detail..."
+                placeholder="Describe your feedback in detail…"
                 rows={6}
                 maxLength={2000}
                 className={cn(
@@ -298,19 +333,22 @@ export default function FeedbackPage() {
                   "disabled:cursor-not-allowed disabled:opacity-50",
                 )}
               >
-                Submit Feedback
+                {submitting ? "Submitting…" : "Submit Feedback"}
               </button>
               {submitted && (
                 <span className="text-sm text-emerald-400">
                   Thanks for your feedback!
                 </span>
               )}
+              {submitError && (
+                <span className="text-sm text-rose-400">{submitError}</span>
+              )}
             </div>
           </form>
         </div>
 
         {/* Right: Feedback list */}
-        <FeedbackList feedbacks={feedbacks} />
+        <FeedbackList feedbacks={feedbacks} loading={listLoading} />
       </div>
     </div>
   );
