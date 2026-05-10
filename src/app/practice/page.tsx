@@ -10,7 +10,7 @@ import {
   type CSSProperties,
 } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MoreHorizontal, Pause, Play, Square } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Pause, Play, Shuffle, Square } from "lucide-react";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
@@ -95,6 +95,11 @@ export default function PracticePage() {
   const [restartOpen, setRestartOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // Random-start state: index of the sentence to start from, and a word-count
+  // offset so the teleprompter tracks from that sentence when recording begins.
+  const [randomStartIndex, setRandomStartIndex] = useState<number | null>(null);
+  const [wordCountOffset, setWordCountOffset] = useState(0);
+
   const [elapsedSec, setElapsedSec] = useState(0);
   const startedAtRef = useRef<number | null>(null);
   const pausedAccumRef = useRef(0);
@@ -171,6 +176,16 @@ export default function PracticePage() {
   }, [recordState]);
 
   const startAll = useCallback(() => {
+    // If a random start position was chosen, shift the word-count baseline so
+    // the teleprompter begins tracking from that sentence.
+    if (randomStartIndex !== null && randomStartIndex > 0) {
+      const offset = sentences[randomStartIndex - 1]?.cumulativeWords ?? 0;
+      setWordCountOffset(offset);
+    } else {
+      setWordCountOffset(0);
+    }
+    setRandomStartIndex(null);
+
     audio.start();
     speech.start();
     webcam.start();
@@ -180,7 +195,7 @@ export default function PracticePage() {
     lastWordChangeAtRef.current = performance.now();
     setElapsedSec(0);
     setRecordState("recording");
-  }, [audio, speech, webcam]);
+  }, [audio, speech, webcam, randomStartIndex, sentences]);
 
   useEffect(() => {
     lastWordChangeAtRef.current = performance.now();
@@ -189,11 +204,17 @@ export default function PracticePage() {
 
   const currentSentenceIndex = useMemo(() => {
     if (sentences.length === 0) return 0;
-    const spoken = speech.spokenWordCount;
+    const spoken = speech.spokenWordCount + wordCountOffset;
     let i = 0;
     while (i < sentences.length && sentences[i].cumulativeWords <= spoken) i++;
     return Math.min(i, sentences.length - 1);
-  }, [sentences, speech.spokenWordCount]);
+  }, [sentences, speech.spokenWordCount, wordCountOffset]);
+
+  // While idle with a random start selected, highlight that sentence instead.
+  const displayedCurrentIndex =
+    recordState === "idle" && randomStartIndex !== null
+      ? randomStartIndex
+      : currentSentenceIndex;
 
   useEffect(() => {
     if (!hint.active) return;
@@ -215,10 +236,12 @@ export default function PracticePage() {
   }, [recordState, hint.active, currentSentenceIndex, sentences.length, showHint]);
 
   useEffect(() => {
-    const el = sentenceRefs.current[currentSentenceIndex];
+    // Don't auto-scroll during idle with a random start — onRandom already scrolled.
+    if (recordState === "idle" && randomStartIndex !== null) return;
+    const el = sentenceRefs.current[displayedCurrentIndex];
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [currentSentenceIndex, scriptFontSize]);
+  }, [displayedCurrentIndex, scriptFontSize, recordState, randomStartIndex]);
 
   const onPause = useCallback(() => {
     audio.pause();
@@ -398,6 +421,8 @@ export default function PracticePage() {
     pausedAtRef.current = null;
     lastWordChangeAtRef.current = performance.now();
     setElapsedSec(0);
+    setWordCountOffset(0);
+    setRandomStartIndex(null);
     setRestartOpen(false);
 
     requestAnimationFrame(() => {
@@ -410,6 +435,18 @@ export default function PracticePage() {
       setRecordState("recording");
     });
   }, [audio, speech, clearHint]);
+
+  const onRandom = useCallback(() => {
+    if (sentences.length === 0) return;
+    // Pick a random sentence index, preferring somewhere in the middle third
+    // but allowing the full range so any part of the script is reachable.
+    const idx = Math.floor(Math.random() * sentences.length);
+    setRandomStartIndex(idx);
+    requestAnimationFrame(() => {
+      const el = sentenceRefs.current[idx];
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [sentences]);
 
   const toggleMask = useCallback(() => {
     setMasked((m) => !m);
@@ -508,10 +545,11 @@ export default function PracticePage() {
                     key={i}
                     index={i}
                     text={sentence.text}
-                    isCurrent={i === currentSentenceIndex}
-                    distance={Math.abs(i - currentSentenceIndex)}
+                    isCurrent={i === displayedCurrentIndex}
+                    distance={Math.abs(i - displayedCurrentIndex)}
                     masked={masked}
                     isHinted={hint.active && hint.sentenceIndex === i}
+                    isRandomStart={recordState === "idle" && randomStartIndex === i}
                     fontPx={sentenceFontPx}
                     onClick={onSentenceClick}
                     refSetter={(el) => {
@@ -556,6 +594,8 @@ export default function PracticePage() {
         onRestart={() => setRestartOpen(true)}
         onStop={onStop}
         onHelp={() => setHelpOpen(true)}
+        onRandom={onRandom}
+        hasRandomStart={randomStartIndex !== null}
       />
 
       <RestartConfirm
@@ -576,6 +616,7 @@ function SentenceRow({
   distance,
   masked,
   isHinted,
+  isRandomStart,
   fontPx,
   onClick,
   refSetter,
@@ -586,17 +627,18 @@ function SentenceRow({
   distance: number;
   masked: boolean;
   isHinted: boolean;
+  isRandomStart: boolean;
   fontPx: string;
   onClick: () => void;
   refSetter: (el: HTMLSpanElement | null) => void;
 }) {
-  const opacity = isHinted
+  const opacity = isHinted || isRandomStart
     ? 1
     : isCurrent
       ? 1
       : Math.max(0, 1 - distance * FADE_PER_STEP - (distance > FADE_LIMIT ? 1 : 0));
 
-  const showMasked = masked && !isHinted;
+  const showMasked = masked && !isHinted && !isRandomStart;
   const display = showMasked ? renderMasked(text) : text;
 
   const style: CSSProperties = {
@@ -616,10 +658,12 @@ function SentenceRow({
         "block max-w-full cursor-pointer text-center font-medium leading-tight",
         "transition-[opacity,transform,font-size,color] duration-300",
         "select-none whitespace-pre-wrap break-words",
-        isCurrent ? "text-white" : "text-neutral-300",
+        isCurrent && !isRandomStart ? "text-white" : "text-neutral-300",
         showMasked && "text-neutral-500/70 tracking-wide",
         isHinted &&
           "rounded-2xl px-6 py-3 text-amber-100 ring-2 ring-amber-300/70 shadow-[0_0_40px_-10px_rgba(251,191,36,0.65)] animate-in fade-in",
+        isRandomStart &&
+          "rounded-2xl px-6 py-3 text-sky-100 ring-2 ring-sky-400/70 shadow-[0_0_40px_-10px_rgba(56,189,248,0.55)] animate-in fade-in",
       )}
     >
       {display}
@@ -807,6 +851,8 @@ function ControlPill({
   onRestart,
   onStop,
   onHelp,
+  onRandom,
+  hasRandomStart,
 }: {
   recordState: RecordState;
   isPaused: boolean;
@@ -819,6 +865,8 @@ function ControlPill({
   onRestart: () => void;
   onStop: () => void;
   onHelp: () => void;
+  onRandom: () => void;
+  hasRandomStart: boolean;
 }) {
   const isIdle = recordState === "idle";
 
@@ -862,6 +910,24 @@ function ControlPill({
             )}
           >
             <Square className="h-5 w-5 fill-current" />
+          </button>
+        )}
+
+        {isIdle && (
+          <button
+            type="button"
+            onClick={onRandom}
+            aria-label="Jump to random position"
+            title="Random start position"
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-full",
+              "transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50",
+              hasRandomStart
+                ? "bg-sky-500/20 text-sky-400 hover:bg-sky-500/30 hover:text-sky-300"
+                : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200",
+            )}
+          >
+            <Shuffle className="h-4 w-4" />
           </button>
         )}
 
