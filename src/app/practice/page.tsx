@@ -240,11 +240,16 @@ export default function PracticePage() {
 
   const currentSentenceIndex = useMemo(() => {
     if (sentences.length === 0) return 0;
-    const spoken = speech.spokenWordCount + wordCountOffset;
+    // Include interim (real-time, unfinalized) words so the teleprompter tracks
+    // speech immediately rather than waiting for recognition to finalize (~1-3s lag).
+    const interimWords = speech.interim
+      ? speech.interim.trim().split(/\s+/).filter(Boolean).length
+      : 0;
+    const spoken = speech.spokenWordCount + interimWords + wordCountOffset;
     let i = 0;
     while (i < sentences.length && sentences[i].cumulativeWords <= spoken) i++;
     return Math.min(i, sentences.length - 1);
-  }, [sentences, speech.spokenWordCount, wordCountOffset]);
+  }, [sentences, speech.spokenWordCount, speech.interim, wordCountOffset]);
 
   // While idle with a random start selected, highlight that sentence instead.
   const displayedCurrentIndex =
