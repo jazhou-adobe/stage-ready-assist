@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  Bug,
   LayoutDashboard,
   LifeBuoy,
   MessageSquare,
@@ -122,6 +123,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     { label: "Support", href: "/support", icon: LifeBuoy },
   ];
 
+  const REPORT_ISSUE_URL = "https://github.com/jazhou-adobe/stage-ready-assist/issues";
+
   return (
     <div className="flex min-h-screen flex-1 bg-slate-950 text-slate-100">
       <aside className="flex w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900">
@@ -151,6 +154,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               active={isActive(pathname, item.href)}
             />
           ))}
+          <a
+            href={REPORT_ISSUE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-300 outline-none transition-colors hover:bg-slate-800/60 hover:text-white focus-visible:ring-2 focus-visible:ring-sky-400/60"
+          >
+            <Bug className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>Report Issue</span>
+          </a>
         </div>
       </aside>
       <main className="flex min-w-0 flex-1 flex-col bg-slate-950 text-slate-100">
