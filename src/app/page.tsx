@@ -286,6 +286,17 @@ export default function DashboardPage() {
               Quick Start: Import Script
             </Button>
           </div>
+
+          <div className="rounded-xl border border-neutral-700/50 bg-neutral-800/40 px-5 py-4">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+              Before you panic...
+            </p>
+            <p className="text-sm leading-relaxed text-neutral-400">
+              Your scripts, recordings, and session data never leave your browser — no servers, no clouds, no judgment from strangers on the internet.
+              The AI score? It&apos;s actually just math wearing a lab coat. A formula that counts filler words and checks your pace — not a speech coach, not a talent agent, and definitely not your parents.
+              Take it as a nudge, not a verdict. Go practice. You&apos;re probably better than you think. 🎤
+            </p>
+          </div>
         </div>
       </Card>
 
