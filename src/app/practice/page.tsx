@@ -469,11 +469,7 @@ export default function PracticePage() {
     requestAnimationFrame(() => {
       const el = scrollRef.current;
       if (el) el.scrollTo({ top: 0, behavior: "smooth" });
-      audio.start();
-      speech.start();
-      startedAtRef.current = performance.now();
-      lastWordChangeAtRef.current = performance.now();
-      setRecordState("recording");
+      setRecordState("idle");
     });
   }, [audio, speech, clearHint]);
 
@@ -949,23 +945,21 @@ function ControlPill({
           </button>
         )}
 
-        {isIdle && (
-          <button
-            type="button"
-            onClick={onRandom}
-            aria-label="Jump to random position"
-            title="Random start position"
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-full",
-              "transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50",
-              hasRandomStart
-                ? "bg-sky-500/20 text-sky-400 hover:bg-sky-500/30 hover:text-sky-300"
-                : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200",
-            )}
-          >
-            <Shuffle className="h-4 w-4" />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onRandom}
+          aria-label="Jump to random position"
+          title="Random start position"
+          className={cn(
+            "flex h-9 w-9 items-center justify-center rounded-full",
+            "transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50",
+            hasRandomStart
+              ? "bg-sky-500/20 text-sky-400 hover:bg-sky-500/30 hover:text-sky-300"
+              : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200",
+          )}
+        >
+          <Shuffle className="h-4 w-4" />
+        </button>
 
         <span aria-hidden className="h-7 w-px bg-neutral-700/80" />
 
