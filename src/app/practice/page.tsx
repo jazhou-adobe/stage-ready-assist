@@ -88,6 +88,17 @@ export default function PracticePage() {
 
   const sentences = useMemo(() => splitSentences(script), [script]);
 
+  // Flat word list for skip-detection: maps each script word to its sentence index
+  const scriptWords = useMemo(() => {
+    const words: Array<{ word: string; sentenceIndex: number }> = [];
+    sentences.forEach((s, si) => {
+      s.text.split(/\s+/).filter(Boolean).forEach((w) => {
+        words.push({ word: w.toLowerCase().replace(/[^a-z0-9']/g, ""), sentenceIndex: si });
+      });
+    });
+    return words;
+  }, [sentences]);
+
   const [recordState, setRecordState] = useState<RecordState>("idle");
   const [displayedFillerCounts, setDisplayedFillerCounts] = useState<Record<string, number>>({});
   const fillerCountsRef = useRef<Record<string, number>>({});
@@ -120,6 +131,12 @@ export default function PracticePage() {
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const sentenceRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  // Refs read inside the skip-detection effect to avoid stale closures
+  const wordCountOffsetRef = useRef(0);
+  const curSentIdxRef = useRef(0);
+  const spokenWordCountRef = useRef(0);
+  const scriptWordsRef = useRef<Array<{ word: string; sentenceIndex: number }>>([]);
+  const sentencesRef = useRef(sentences);
 
   useEffect(() => {
     sentenceRefs.current = sentenceRefs.current.slice(0, sentences.length);
@@ -146,6 +163,7 @@ export default function PracticePage() {
           const dist = Math.abs(r.top + r.height / 2 - mid);
           if (dist < closestDist) { closestDist = dist; closest = i; }
         });
+        console.log("[teleprompter] idle scroll → closest sentence", closest);
         setRandomStartIndex(closest);
       }, 80);
     };
@@ -238,6 +256,12 @@ export default function PracticePage() {
     if (hint.active) clearHint();
   }, [speech.spokenWordCount, hint.active, clearHint]);
 
+  // Keep skip-detection refs in sync
+  useEffect(() => { wordCountOffsetRef.current = wordCountOffset; }, [wordCountOffset]);
+  useEffect(() => { spokenWordCountRef.current = speech.spokenWordCount; }, [speech.spokenWordCount]);
+  useEffect(() => { scriptWordsRef.current = scriptWords; }, [scriptWords]);
+  useEffect(() => { sentencesRef.current = sentences; }, [sentences]);
+
   const currentSentenceIndex = useMemo(() => {
     if (sentences.length === 0) return 0;
     // Include interim (real-time, unfinalized) words so the teleprompter tracks
@@ -256,6 +280,77 @@ export default function PracticePage() {
     recordState === "idle" && randomStartIndex !== null
       ? randomStartIndex
       : currentSentenceIndex;
+
+  useEffect(() => {
+    curSentIdxRef.current = currentSentenceIndex;
+    if (recordStateRef.current === "recording") {
+      console.log("[teleprompter] sentence index →", currentSentenceIndex, "| spoken:", spokenWordCountRef.current, "| offset:", wordCountOffsetRef.current);
+    }
+  }, [currentSentenceIndex]);
+
+  // Detect when the presenter skips 1+ sentences by matching the tail of the
+  // finalized transcript against upcoming script positions. When a better match
+  // is found ahead of the current sentence, advance wordCountOffset so the
+  // teleprompter jumps to the right line without waiting for word-count catch-up.
+  useEffect(() => {
+    if (recordState !== "recording") return;
+    if (!speech.transcript) return;
+
+    const words = scriptWordsRef.current;
+    const sents = sentencesRef.current;
+    if (words.length === 0) return;
+
+    const MATCH_WORDS = 8; // last N transcript words to compare
+    const MIN_SCORE = 0.6; // fraction of those words that must match
+    const LOOK_AHEAD = 8;  // sentences ahead to search
+
+    const tokens = speech.transcript
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w.replace(/[^a-z0-9']/g, ""))
+      .filter((w) => w.length > 0);
+
+    if (tokens.length < 4) return;
+
+    const lastN = tokens.slice(-MATCH_WORDS);
+    const offset = wordCountOffsetRef.current;
+    const spokenCount = spokenWordCountRef.current;
+    const curSentIdx = curSentIdxRef.current;
+
+    // Search from slightly before the current script position up to LOOK_AHEAD sentences ahead
+    const searchStart = Math.max(0, spokenCount + offset - 5);
+    const lookAheadSent = Math.min(sents.length - 1, curSentIdx + LOOK_AHEAD);
+    const searchEnd = Math.min(
+      words.length - lastN.length,
+      sents[lookAheadSent]?.cumulativeWords ?? words.length,
+    );
+
+    let bestScore = 0;
+    let bestIndex = -1;
+    for (let p = searchStart; p <= searchEnd; p++) {
+      let score = 0;
+      for (let k = 0; k < lastN.length && p + k < words.length; k++) {
+        if (words[p + k].word === lastN[k]) score++;
+      }
+      if (score > bestScore) { bestScore = score; bestIndex = p; }
+    }
+
+    if (bestIndex === -1 || bestScore / lastN.length < MIN_SCORE) return;
+
+    const matchEndIdx = bestIndex + lastN.length - 1;
+    const matchedSentIdx = words[matchEndIdx]?.sentenceIndex ?? -1;
+    if (matchedSentIdx <= curSentIdx) return; // no forward skip detected
+
+    const newOffset = matchEndIdx + 1 - spokenCount;
+    if (newOffset <= offset) return;
+
+    console.log(
+      "[teleprompter] skip detected: sentence", curSentIdx, "→", matchedSentIdx,
+      `(score ${bestScore}/${lastN.length}, offset ${offset} → ${newOffset})`,
+    );
+    setWordCountOffset(newOffset);
+  }, [speech.transcript, recordState]);
 
   useEffect(() => {
     if (!hint.active) return;
@@ -281,6 +376,7 @@ export default function PracticePage() {
     if (recordState === "idle" && randomStartIndex !== null) return;
     const el = sentenceRefs.current[displayedCurrentIndex];
     if (!el) return;
+    console.log("[teleprompter] scrollIntoView → sentence", displayedCurrentIndex, recordState);
     el.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [displayedCurrentIndex, scriptFontSize, recordState, randomStartIndex]);
 
