@@ -137,6 +137,9 @@ export default function PracticePage() {
   const spokenWordCountRef = useRef(0);
   const scriptWordsRef = useRef<Array<{ word: string; sentenceIndex: number }>>([]);
   const sentencesRef = useRef(sentences);
+  // Tracks how many transcript tokens were processed in the last skip-detection run,
+  // so we only match the *newly finalized* chunk (avoids cross-skip contamination).
+  const prevTranscriptLenRef = useRef(0);
 
   useEffect(() => {
     sentenceRefs.current = sentenceRefs.current.slice(0, sentences.length);
@@ -240,6 +243,7 @@ export default function PracticePage() {
     }
     setRandomStartIndex(null);
 
+    prevTranscriptLenRef.current = 0;
     audio.start();
     speech.start();
     webcam.start();
@@ -288,10 +292,11 @@ export default function PracticePage() {
     }
   }, [currentSentenceIndex]);
 
-  // Detect when the presenter skips 1+ sentences by matching the tail of the
-  // finalized transcript against upcoming script positions. When a better match
-  // is found ahead of the current sentence, advance wordCountOffset so the
-  // teleprompter jumps to the right line without waiting for word-count catch-up.
+  // Detect when the presenter skips 1+ sentences by matching only the *newly
+  // finalized* transcript chunk against upcoming script positions. Using the full
+  // transcript tail causes false negatives because the tail spans the skip boundary
+  // (words from before the skip + words from the new sentence are never consecutive
+  // in the script, so no window scores high enough). The delta approach avoids this.
   useEffect(() => {
     if (recordState !== "recording") return;
     if (!speech.transcript) return;
@@ -300,10 +305,12 @@ export default function PracticePage() {
     const sents = sentencesRef.current;
     if (words.length === 0) return;
 
-    const MATCH_WORDS = 8; // last N transcript words to compare
-    const MIN_SCORE = 0.6; // fraction of those words that must match
-    const LOOK_AHEAD = 8;  // sentences ahead to search
+    const MIN_NEW_TOKENS = 3;  // ignore tiny finalizations
+    const MAX_MATCH_WORDS = 10; // cap window size
+    const MIN_SCORE = 0.55;    // fraction of window that must match
+    const LOOK_AHEAD = 10;     // sentences ahead to search
 
+    // Tokenize full transcript
     const tokens = speech.transcript
       .toLowerCase()
       .split(/\s+/)
@@ -311,43 +318,81 @@ export default function PracticePage() {
       .map((w) => w.replace(/[^a-z0-9']/g, ""))
       .filter((w) => w.length > 0);
 
-    if (tokens.length < 4) return;
+    // Extract only words added since last finalization
+    const prevLen = prevTranscriptLenRef.current;
+    const newTokens = tokens.slice(prevLen);
+    prevTranscriptLenRef.current = tokens.length;
 
-    const lastN = tokens.slice(-MATCH_WORDS);
+    console.log(
+      "[transcript] finalized chunk:", newTokens,
+      "| total tokens:", tokens.length,
+      "| spokenWordCount:", spokenWordCountRef.current,
+      "| offset:", wordCountOffsetRef.current,
+    );
+
+    if (newTokens.length < MIN_NEW_TOKENS) {
+      console.log("[skip-detect] too few new tokens (%d), skipping", newTokens.length);
+      return;
+    }
+
+    // Match the new chunk (up to MAX_MATCH_WORDS) against the script lookahead window
+    const matchWindow = newTokens.slice(-MAX_MATCH_WORDS);
     const offset = wordCountOffsetRef.current;
     const spokenCount = spokenWordCountRef.current;
     const curSentIdx = curSentIdxRef.current;
 
-    // Search from slightly before the current script position up to LOOK_AHEAD sentences ahead
     const searchStart = Math.max(0, spokenCount + offset - 5);
     const lookAheadSent = Math.min(sents.length - 1, curSentIdx + LOOK_AHEAD);
     const searchEnd = Math.min(
-      words.length - lastN.length,
+      words.length - matchWindow.length,
       sents[lookAheadSent]?.cumulativeWords ?? words.length,
+    );
+
+    console.log(
+      "[skip-detect] window:", matchWindow,
+      "| curSentIdx:", curSentIdx,
+      "| searchStart:", searchStart, "searchEnd:", searchEnd,
     );
 
     let bestScore = 0;
     let bestIndex = -1;
     for (let p = searchStart; p <= searchEnd; p++) {
       let score = 0;
-      for (let k = 0; k < lastN.length && p + k < words.length; k++) {
-        if (words[p + k].word === lastN[k]) score++;
+      for (let k = 0; k < matchWindow.length && p + k < words.length; k++) {
+        if (words[p + k].word === matchWindow[k]) score++;
       }
       if (score > bestScore) { bestScore = score; bestIndex = p; }
     }
 
-    if (bestIndex === -1 || bestScore / lastN.length < MIN_SCORE) return;
+    const scoreRatio = bestIndex >= 0 ? bestScore / matchWindow.length : 0;
+    console.log(
+      "[skip-detect] best match: scriptWord", bestIndex,
+      "score", bestScore, "/", matchWindow.length, "=", scoreRatio.toFixed(2),
+      bestIndex >= 0 ? `(sentence ${words[bestIndex]?.sentenceIndex})` : "",
+    );
 
-    const matchEndIdx = bestIndex + lastN.length - 1;
+    if (bestIndex === -1 || scoreRatio < MIN_SCORE) {
+      console.log("[skip-detect] score below threshold, no jump");
+      return;
+    }
+
+    const matchEndIdx = bestIndex + matchWindow.length - 1;
     const matchedSentIdx = words[matchEndIdx]?.sentenceIndex ?? -1;
-    if (matchedSentIdx <= curSentIdx) return; // no forward skip detected
+
+    if (matchedSentIdx <= curSentIdx) {
+      console.log("[skip-detect] matched sentence", matchedSentIdx, "≤ current", curSentIdx, ", no jump");
+      return;
+    }
 
     const newOffset = matchEndIdx + 1 - spokenCount;
-    if (newOffset <= offset) return;
+    if (newOffset <= offset) {
+      console.log("[skip-detect] newOffset", newOffset, "≤ current offset", offset, ", no jump");
+      return;
+    }
 
     console.log(
-      "[teleprompter] skip detected: sentence", curSentIdx, "→", matchedSentIdx,
-      `(score ${bestScore}/${lastN.length}, offset ${offset} → ${newOffset})`,
+      "[skip-detect] JUMP sentence", curSentIdx, "→", matchedSentIdx,
+      `| score ${bestScore}/${matchWindow.length} | offset ${offset} → ${newOffset}`,
     );
     setWordCountOffset(newOffset);
   }, [speech.transcript, recordState]);
