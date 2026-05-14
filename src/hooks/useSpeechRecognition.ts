@@ -274,7 +274,14 @@ export function useSpeechRecognition(
       };
 
       rec.onerror = (event) => {
-        if (event.error === "no-speech" || event.error === "aborted") {
+        // "no-speech" and "aborted" are expected during normal operation.
+        // "network" fires after ~5 min when Chrome resets its STT connection;
+        // onend will restart recognition automatically, so no need to surface it.
+        if (
+          event.error === "no-speech" ||
+          event.error === "aborted" ||
+          event.error === "network"
+        ) {
           return;
         }
         setError(event.message || event.error || "speech-recognition-error");
