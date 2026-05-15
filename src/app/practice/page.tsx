@@ -308,7 +308,7 @@ export default function PracticePage() {
     const MIN_NEW_TOKENS = 3;  // ignore tiny finalizations
     const MAX_MATCH_WORDS = 10; // cap window size
     const MIN_SCORE = 0.55;    // fraction of window that must match
-    const LOOK_AHEAD = 10;     // sentences ahead to search
+    const LOOK_AHEAD = 15;     // sentences ahead to search
 
     // Tokenize full transcript
     const tokens = speech.transcript
