@@ -3,11 +3,12 @@
 import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { RotateCcw, Save, Share2 } from "lucide-react";
+import { Download, RotateCcw, Save, Share2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAppStore } from "@/lib/store";
+import { getRecordingBlob } from "@/lib/recordingBlobStore";
 import {
   computeScore,
   gradeFromScore,
@@ -246,6 +247,8 @@ function ReportContent({
         <Share2 className="h-4 w-4" />
       </button>
 
+      <RecordingDownloadSection titleText={titleText} />
+
       <div className="mt-4 flex justify-center border-t border-slate-200 pt-6 pb-2">
         <Link
           href="/feedback"
@@ -254,6 +257,39 @@ function ReportContent({
           Leave feedback on this report
         </Link>
       </div>
+    </div>
+  );
+}
+
+function RecordingDownloadSection({ titleText }: { titleText: string }) {
+  const blob = getRecordingBlob();
+  if (!blob) return null;
+
+  const handleDownload = () => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${titleText.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "session"}.mp4`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-sm font-medium text-slate-900">Session Recording</span>
+        <span className="text-xs text-slate-500">
+          {(blob.size / (1024 * 1024)).toFixed(1)} MB · MP4
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={handleDownload}
+        className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
+      >
+        <Download className="h-4 w-4" />
+        Download
+      </button>
     </div>
   );
 }

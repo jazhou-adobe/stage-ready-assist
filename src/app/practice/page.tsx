@@ -19,9 +19,11 @@ import { toPng } from "html-to-image";
 import { MetricsChart, type MetricsChartHandle } from "@/components/MetricsChart";
 import { WebcamTile } from "@/components/WebcamTile";
 import { useAudioMetrics } from "@/hooks/useAudioMetrics";
+import { useRecording } from "@/hooks/useRecording";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useWebcam } from "@/hooks/useWebcam";
 import { useAppStore } from "@/lib/store";
+import { setRecordingBlob } from "@/lib/recordingBlobStore";
 import { computeScore, gradeFromScore, summaryLine } from "@/lib/grading";
 import { splitSentences } from "@/lib/script";
 import type {
@@ -85,6 +87,7 @@ export default function PracticePage() {
   const audio = useAudioMetrics();
   const speech = useSpeechRecognition();
   const webcam = useWebcam();
+  const recording = useRecording();
 
   const sentences = useMemo(() => splitSentences(script), [script]);
 
@@ -232,7 +235,7 @@ export default function PracticePage() {
     return () => window.clearInterval(id);
   }, [recordState]);
 
-  const startAll = useCallback(() => {
+  const startAll = useCallback(async () => {
     // If a random start position was chosen, shift the word-count baseline so
     // the teleprompter begins tracking from that sentence.
     if (randomStartIndex !== null && randomStartIndex > 0) {
@@ -244,16 +247,17 @@ export default function PracticePage() {
     setRandomStartIndex(null);
 
     prevTranscriptLenRef.current = 0;
-    audio.start();
+    await audio.start();
     speech.start();
-    webcam.start();
+    await webcam.start();
+    recording.startRecording(webcam.stream, audio.getStream());
     startedAtRef.current = performance.now();
     pausedAccumRef.current = 0;
     pausedAtRef.current = null;
     lastWordChangeAtRef.current = performance.now();
     setElapsedSec(0);
     setRecordState("recording");
-  }, [audio, speech, webcam, randomStartIndex, sentences]);
+  }, [audio, speech, webcam, recording, randomStartIndex, sentences]);
 
   useEffect(() => {
     lastWordChangeAtRef.current = performance.now();
@@ -475,11 +479,13 @@ export default function PracticePage() {
   }, [togglePauseResume]);
 
   const onBack = useCallback(() => {
+    recording.stopRecording().catch(() => {});
     audio.stop();
     speech.stop();
     webcam.stop();
+    setRecordingBlob(null);
     router.push("/");
-  }, [audio, speech, webcam, router]);
+  }, [audio, speech, webcam, recording, router]);
 
   const onStop = useCallback(async () => {
     if (stoppingRef.current) return;
@@ -501,10 +507,15 @@ export default function PracticePage() {
     const finalFillerCounts = { ...speech.fillerCounts };
     const finalTranscript = speech.transcript;
 
+    // Stopping media streams causes MediaStreamTrackProcessors to emit done,
+    // which lets the recording loops exit naturally before finalization.
     audio.stop();
     speech.stop();
     webcam.stop();
     clearHint();
+
+    const recordingBlob = await recording.stopRecording().catch(() => null);
+    setRecordingBlob(recordingBlob);
 
     let chartPng = "";
     const node = chartRef.current?.onSnapshot();
@@ -583,6 +594,7 @@ export default function PracticePage() {
     audio,
     speech,
     webcam,
+    recording,
     clearHint,
     setResult,
     saveScriptSession,
@@ -592,6 +604,8 @@ export default function PracticePage() {
   ]);
 
   const onConfirmRestart = useCallback(() => {
+    recording.stopRecording().catch(() => {});
+    setRecordingBlob(null);
     audio.stop();
     speech.stop();
     clearHint();
@@ -612,7 +626,7 @@ export default function PracticePage() {
       if (el) el.scrollTo({ top: 0, behavior: "smooth" });
       setRecordState("idle");
     });
-  }, [audio, speech, clearHint]);
+  }, [audio, speech, recording, clearHint]);
 
   const onRandom = useCallback(() => {
     if (sentences.length === 0) return;

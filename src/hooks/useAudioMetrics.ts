@@ -14,6 +14,7 @@ export type UseAudioMetricsResult = {
   samples: MetricsSample[];
   pauses: PauseEvent[];
   error: string | null;
+  getStream: () => MediaStream | null;
 };
 
 const SAMPLE_INTERVAL_MS = 50;
@@ -254,5 +255,6 @@ export function useAudioMetrics(): UseAudioMetricsResult {
     samples,
     pauses,
     error,
+    getStream: () => streamRef.current,
   };
 }
