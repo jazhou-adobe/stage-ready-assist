@@ -1,332 +1,334 @@
-"use client";
+import type { Metadata } from "next";
+import Link from "next/link";
+import "./landing.css";
+import { LandingGallery, type GalleryPanel } from "@/components/LandingGallery";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Menu } from "@base-ui/react/menu";
-import { Bell, CircleUser, FileUp, MoreVertical, Trash2 } from "lucide-react";
+const TAGLINE = "Practice out loud and watch your pace fix itself.";
+const DESCRIPTION =
+  "PresentPro is a free, browser-based teleprompter that tracks your pace, filler words, and pauses while you rehearse out loud.";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
-import { useAppStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
-import type { RecentScript, SessionSummary } from "@/lib/types";
-
-const formatDuration = (seconds: number): string => {
-  const total = Math.max(0, Math.round(seconds));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
+export const metadata: Metadata = {
+  title: `PresentPro · ${TAGLINE}`,
+  description: DESCRIPTION,
+  openGraph: {
+    title: `PresentPro · ${TAGLINE}`,
+    description: DESCRIPTION,
+    images: ["/landing/analytics.png"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `PresentPro · ${TAGLINE}`,
+    description: DESCRIPTION,
+    images: ["/landing/analytics.png"],
+  },
 };
 
-const RELATIVE_UNITS: Array<{ ms: number; unit: Intl.RelativeTimeFormatUnit }> = [
-  { ms: 60_000, unit: "second" },
-  { ms: 3_600_000, unit: "minute" },
-  { ms: 86_400_000, unit: "hour" },
-  { ms: 604_800_000, unit: "day" },
-  { ms: 2_629_800_000, unit: "week" },
-  { ms: 31_557_600_000, unit: "month" },
-  { ms: Infinity, unit: "year" },
+const GITHUB_URL = "https://github.com/jazhou-adobe/stage-ready-assist";
+const STAGE_READY_PROGRAM_URL =
+  "https://adobe.sharepoint.com/sites/TeamEpic/Shared%20Documents/Forms/AllItems.aspx?id=/sites/TeamEpic/Shared%20Documents/General/Enablement/Stage%20Ready&viewid=a418e854-3239-4a7c-a3f2-5f5fc8c8b5c9";
+
+const GALLERY_PANELS: GalleryPanel[] = [
+  {
+    title: "Dashboard",
+    line: "Paste a script, give it a title, go.",
+    image: "/landing/dashboard.webp",
+    alt: "PresentPro dashboard with a script pasted in and two recent sessions listed",
+    width: 1024,
+    height: 995,
+  },
+  {
+    title: "Studio Mode",
+    line: "The words scroll. You just have to say them.",
+    image: "/landing/practice.webp",
+    alt: "PresentPro teleprompter in idle mode with the current sentence highlighted",
+    width: 1024,
+    height: 640,
+  },
+  {
+    title: "Analytics",
+    line: "Every filler word, timestamped.",
+    image: "/landing/analytics.png",
+    alt: "PresentPro session analytics with score, pace chart, and filler word list",
+    width: 1200,
+    height: 1227,
+  },
 ];
-const UNIT_DIVISORS: Record<Intl.RelativeTimeFormatUnit, number> = {
-  second: 1000,
-  seconds: 1000,
-  minute: 60_000,
-  minutes: 60_000,
-  hour: 3_600_000,
-  hours: 3_600_000,
-  day: 86_400_000,
-  days: 86_400_000,
-  week: 604_800_000,
-  weeks: 604_800_000,
-  month: 2_629_800_000,
-  months: 2_629_800_000,
-  quarter: 7_889_400_000,
-  quarters: 7_889_400_000,
-  year: 31_557_600_000,
-  years: 31_557_600_000,
-};
 
+const FEATURES = [
+  {
+    name: "Teleprompter",
+    subtitle: "Your script, paced for the room",
+    what: "A fullscreen scrolling script highlights the sentence you're on and fades the rest, with font-size controls so it reads at arm's length or across a room.",
+  },
+  {
+    name: "Live Pace & Filler Tracking",
+    subtitle: "Every \u2018um\u2019 counted while you talk",
+    what: "The Web Speech API tracks words-per-minute and flags filler words in real time as you speak, so the habit shows up while it's still happening, not after.",
+  },
+  {
+    name: "Pause Detection",
+    subtitle: "Know when the room went quiet",
+    what: "The Web Audio API monitors volume and flags pauses past 1.5 seconds. Long silences cost points in the score, the same way they'd cost attention in the room.",
+  },
+  {
+    name: "Local Session Recording",
+    subtitle: "Webcam and mic, saved as MP4",
+    what: "Practice sessions record locally using WebCodecs and download as an MP4 from the report page. The file never leaves the browser unless the download button does.",
+  },
+  {
+    name: "Score & Breakdown",
+    subtitle: "Pace, fillers, and pauses, spelled out",
+    what: "Score starts at 100 and subtracts the filler count, 5 points per long pause, and a penalty for speaking outside 110\u2013170 words per minute. Sentence-by-sentence pace and a filler timeline back it up.",
+  },
+  {
+    name: "Recent Scripts",
+    subtitle: "Your last 10 sessions, one click away",
+    what: "Scripts and their last session summary save to the browser's local storage, so picking up a prior rehearsal takes one click, not a re-paste.",
+  },
+] as const;
 
-const formatRelative = (timestamp: number, now: number): string => {
-  const diffMs = timestamp - now;
-  const absMs = Math.abs(diffMs);
-  if (absMs < 60_000) return "just now";
-  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-  const bucket =
-    RELATIVE_UNITS.find((u) => absMs < u.ms) ??
-    RELATIVE_UNITS[RELATIVE_UNITS.length - 1];
-  const divisor = UNIT_DIVISORS[bucket.unit];
-  return rtf.format(Math.round(diffMs / divisor), bucket.unit);
-};
+const PRINCIPLES = [
+  {
+    title: "Nothing leaves your browser",
+    body: "Scripts, recordings, and session data stay local. There are no accounts and no servers for practice content.",
+  },
+  {
+    title: "The score is arithmetic, not a verdict",
+    body: "It's a fixed formula \u2014 filler count, pause count, and pace \u2014 not a model guessing at talent. Read it as a nudge, not a grade.",
+  },
+  {
+    title: "No signup between you and a script",
+    body: "Paste a script and start. There's no account wall before the first session.",
+  },
+  {
+    title: "Honest about browser support",
+    body: "Speech recognition needs Chrome or Edge. Recording needs Chrome 94+ or Safari 16.4+. Everything else degrades gracefully instead of breaking silently.",
+  },
+] as const;
 
-const gradeTier = (grade: string): "good" | "ok" | "poor" => {
-  const letter = grade.trim().charAt(0).toUpperCase();
-  if (letter === "A") return "good";
-  if (letter === "B") return "ok";
-  return "poor";
-};
+const FAQ = [
+  {
+    q: "How is this different from a generic teleprompter app?",
+    a: "A teleprompter just scrolls text. This one also tracks pace, flags filler words, detects pauses, and scores the session afterward.",
+  },
+  {
+    q: "Does my script or recording get uploaded anywhere?",
+    a: "No. Scripts, recordings, and session data stay in the browser. The only server call is the feedback form, and that's opt-in.",
+  },
+  {
+    q: "Which browsers are supported?",
+    a: "Speech recognition (pace and filler tracking) needs Chrome or Edge. Session recording needs Chrome 94+ or Safari 16.4+.",
+  },
+  {
+    q: "How is the score calculated?",
+    a: "100, minus the filler count, minus 5 points per long pause, minus a penalty for speaking outside 110\u2013170 words per minute. No model, just arithmetic.",
+  },
+  {
+    q: "Can I download my practice recording?",
+    a: "Yes. If the webcam and mic were on, the report page has a local MP4 download link.",
+  },
+  {
+    q: "Do I need to sign up?",
+    a: "No. Paste a script on the dashboard and start practicing.",
+  },
+  {
+    q: "What happens to my recent scripts?",
+    a: "The last 10 scripts, and each one's last session summary, save to the browser's local storage, not a server.",
+  },
+  {
+    q: "Is this ready for phones and tablets?",
+    a: "Not yet. It relies on desktop-grade Web Speech and WebCodecs APIs, so it's built and tested for desktop Chrome, Edge, and Safari.",
+  },
+] as const;
 
-const gradeBadgeClass = (grade: string): string => {
-  const tier = gradeTier(grade);
-  if (tier === "good")
-    return "border-emerald-500/40 bg-emerald-900/40 text-emerald-400";
-  if (tier === "ok") return "border-amber-500/40 bg-amber-900/40 text-amber-400";
-  return "border-red-500/40 bg-red-900/40 text-red-400";
-};
-
-type RecentCardProps = {
-  script: RecentScript;
-  now: number;
-  onSelect: () => void;
-  onDelete: () => void;
-};
-
-function RecentScriptCard({ script, now, onSelect, onDelete }: RecentCardProps) {
-  const summary: SessionSummary | undefined = script.lastSession;
-
+export default function LandingPage() {
   return (
-    <Card className="relative overflow-hidden border-slate-700/60 bg-slate-900 text-slate-100 transition-colors hover:border-slate-600">
-      <button
-        type="button"
-        onClick={onSelect}
-        className="flex w-full flex-col gap-4 p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
-      >
-        <div className="flex items-start justify-between gap-3 pr-8">
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-lg font-semibold text-slate-100">
-              {script.title || "Untitled session"}
-            </h3>
-            <p className="mt-1 text-xs text-slate-400">
-              {summary
-                ? now
-                  ? `Last practiced: ${formatRelative(summary.savedAt, now)}`
-                  : "Last practiced recently"
-                : "Not yet practiced"}
-            </p>
-          </div>
-          {summary ? (
-            <span
-              className={cn(
-                "shrink-0 rounded-full border px-3 py-1 text-sm font-semibold",
-                gradeBadgeClass(summary.grade),
-              )}
-            >
-              {summary.grade}
+    <div className="kami-landing">
+      <main className="page">
+        <header className="hero">
+          <div className="eyebrow">
+            <span>
+              Speech Practice Teleprompter ·{" "}
+              <a className="version-link" href={`${GITHUB_URL}/releases`}>
+                v0.1.0
+              </a>
             </span>
-          ) : null}
-        </div>
-
-        {summary ? (
-          <div className="grid grid-cols-2 gap-4 border-t border-slate-700/60 pt-4">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Avg WPM
-              </p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-100">
-                {Math.round(summary.avgWpm)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Duration
-              </p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-100">
-                {formatDuration(summary.durationSec)}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <p className="line-clamp-2 border-t border-slate-700/60 pt-4 text-sm text-slate-400">
-            {script.preview || "Empty script"}
-          </p>
-        )}
-      </button>
-
-      <Menu.Root>
-        <Menu.Trigger
-          aria-label="Recent script options"
-          className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
-        >
-          <MoreVertical className="h-4 w-4" />
-        </Menu.Trigger>
-        <Menu.Portal>
-          <Menu.Positioner sideOffset={4} align="end">
-            <Menu.Popup className="min-w-[140px] overflow-hidden rounded-md border border-slate-700 bg-slate-900 p-1 text-sm shadow-lg outline-none">
-              <Menu.Item
-                onClick={onDelete}
-                className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-red-400 outline-none data-[highlighted]:bg-red-950/60 data-[highlighted]:text-red-300"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Menu.Item>
-            </Menu.Popup>
-          </Menu.Positioner>
-        </Menu.Portal>
-      </Menu.Root>
-    </Card>
-  );
-}
-
-export default function DashboardPage() {
-  const router = useRouter();
-
-  const recentScripts = useAppStore((s) => s.recentScripts);
-  const saveRecentScript = useAppStore((s) => s.saveRecentScript);
-  const deleteRecentScript = useAppStore((s) => s.deleteRecentScript);
-  const setScript = useAppStore((s) => s.setScript);
-  const setScriptTitle = useAppStore((s) => s.setScriptTitle);
-
-  const [titleDraft, setTitleDraft] = useState("");
-  const [textDraft, setTextDraft] = useState("");
-  const [now, setNow] = useState(0);
-  useEffect(() => {
-    setNow(Date.now());
-    const id = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const canStart = useMemo(
-    () => titleDraft.trim().length > 0 && textDraft.trim().length > 0,
-    [titleDraft, textDraft],
-  );
-
-  const handleStart = () => {
-    if (!canStart) return;
-    const title = titleDraft.trim();
-    const text = textDraft;
-    saveRecentScript({ title, text });
-    setScriptTitle(title);
-    setScript(text);
-    router.push("/practice");
-  };
-
-  const handleSelectRecent = (script: RecentScript) => {
-    setTitleDraft(script.title);
-    setTextDraft(script.text);
-  };
-
-  return (
-    <div className="flex flex-1 flex-col gap-8 p-6 md:p-10">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-100">
-          Overview
-        </h1>
-        <div className="flex items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-400"
-          >
-            <Bell className="h-4 w-4" />
-          </span>
-          <span
-            aria-hidden="true"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-400"
-          >
-            <CircleUser className="h-5 w-5" />
-          </span>
-        </div>
-      </header>
-
-      <Card className="border-neutral-800 bg-neutral-900 p-8 text-neutral-50 md:p-10">
-        <div className="flex flex-col gap-6">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold tracking-tight text-neutral-50 md:text-3xl">
-              Ready to perfect your delivery?
-            </h2>
-            <p className="max-w-2xl text-sm text-neutral-300 md:text-base">
-              Import your latest keynote, pitch, or presentation script to start
-              an AI-assisted practice session.
-            </p>
+            <span className="hero-links">
+              <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+                GitHub
+              </a>
+            </span>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <label
-              htmlFor="dashboard-title"
-              className="text-xs font-medium uppercase tracking-wider text-neutral-400"
-            >
-              Title
-            </label>
-            <Input
-              id="dashboard-title"
-              value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              placeholder="Untitled session"
-              required
-              maxLength={120}
-            />
+          <h1>PresentPro</h1>
+
+          <p className="tagline">{TAGLINE}</p>
+
+          <div className="hero-tokens">
+            <span>
+              <b>Free</b> forever
+            </span>
+            <span>
+              <b>0</b> signups
+            </span>
+            <span>
+              <b>2</b> browsers supported
+            </span>
+            <span>
+              <b>MP4</b> local recording
+            </span>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <label
-              htmlFor="dashboard-script"
-              className="text-xs font-medium uppercase tracking-wider text-neutral-400"
-            >
-              Script
-            </label>
-            <Textarea
-              id="dashboard-script"
-              value={textDraft}
-              onChange={(e) => setTextDraft(e.target.value)}
-              placeholder="Paste your script here to start practicing immediately..."
-              rows={10}
-              className="min-h-[240px]"
-            />
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              onClick={handleStart}
-              disabled={!canStart}
-              size="lg"
-              className="gap-2"
-            >
-              <FileUp className="h-4 w-4" />
-              Quick Start: Import Script
-            </Button>
-          </div>
-
-          <div className="rounded-xl border border-neutral-700/50 bg-neutral-800/40 px-6 py-5">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-300">
-              Before you panic...
-            </p>
-            <div className="flex flex-col gap-2.5 text-base leading-relaxed text-neutral-200">
-              <p>Your scripts, recordings, and session data never leave your browser — no servers, no clouds, no judgment from strangers on the internet.</p>
-              <p>The AI score? It&apos;s actually just math wearing a lab coat. A formula that counts filler words and checks your pace — not a speech coach, not a talent agent, and definitely not your parents.</p>
-              <p>Take it as a nudge, not a verdict. Go practice. You&apos;re probably better than you think. 🎤</p>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {recentScripts.length > 0 ? (
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight text-slate-100">
-              Recent Scripts
-            </h2>
-            <a
-              href="#"
-              onClick={(e) => e.preventDefault()}
-              className="text-sm font-medium text-slate-400 hover:text-slate-100"
-            >
-              View All
+          <div className="hero-cta">
+            <a className="btn-ghost" href="#features">
+              See How It Works
             </a>
+            <a
+              className="btn-ghost"
+              href={STAGE_READY_PROGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Study in Stage Ready Program
+            </a>
+            <Link className="btn-primary" href="/start">
+              Start Practicing Free
+            </Link>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {recentScripts.map((script) => (
-              <RecentScriptCard
-                key={script.id}
-                script={script}
-                now={now}
-                onSelect={() => handleSelectRecent(script)}
-                onDelete={() => deleteRecentScript(script.id)}
-              />
+        </header>
+
+        <section>
+          <div className="section-head">
+            <p className="section-num">00 · Walkthrough</p>
+            <h2 className="section-title">From script to score</h2>
+            <p className="section-lede">
+              Three real screens: import a script, rehearse it, then read
+              exactly how it went.
+            </p>
+          </div>
+
+          <LandingGallery panels={GALLERY_PANELS} />
+        </section>
+
+        <section id="features">
+          <div className="section-head">
+            <p className="section-num">01 · What it does</p>
+            <h2 className="section-title">Six tools, one rehearsal</h2>
+          </div>
+
+          <ol className="features">
+            {FEATURES.map((f) => (
+              <li key={f.name}>
+                <p className="name">
+                  {f.name}
+                  <small>{f.subtitle}</small>
+                </p>
+                <p className="what">{f.what}</p>
+              </li>
             ))}
+          </ol>
+        </section>
+
+        <section>
+          <div className="section-head">
+            <p className="section-num">02 · How it thinks</p>
+            <h2 className="section-title">What this will never do</h2>
+          </div>
+
+          <ol className="principles">
+            {PRINCIPLES.map((p, i) => (
+              <li key={p.title}>
+                <span className="n">{i + 1}</span>
+                <span className="body">
+                  <b>{p.title}</b>
+                  <span>{p.body}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section>
+          <div className="section-head">
+            <p className="section-num">03 · The catch</p>
+            <h2 className="section-title">There isn&apos;t one</h2>
+          </div>
+
+          <div className="price-card">
+            <ul className="price-benefits">
+              <li>Full teleprompter, recording, and analytics</li>
+              <li>Unlimited practice sessions</li>
+              <li>Session history stored only on your device</li>
+              <li>No subscription, ever</li>
+            </ul>
+            <p className="price-amount">Free</p>
+            <Link className="btn-primary" href="/start">
+              Start Practicing Free
+            </Link>
+            <p className="price-trial">
+              No credit card, no trial clock — it&apos;s free.
+            </p>
+            <p className="price-terms">
+              Speech recognition requires Chrome or Edge; recording requires
+              Chrome 94+ or Safari 16.4+.
+            </p>
           </div>
         </section>
-      ) : null}
+
+        <section>
+          <div className="section-head">
+            <p className="section-num">04 · Before you start</p>
+            <h2 className="section-title">Questions people actually ask</h2>
+          </div>
+
+          <dl className="faq">
+            {FAQ.map((item) => (
+              <div className="faq-pair" key={item.q}>
+                <dt>{item.q}</dt>
+                <dd>{item.a}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="faq-tail">
+            More questions?{" "}
+            <a
+              href={`${GITHUB_URL}/issues`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open an issue on GitHub
+            </a>
+            .
+          </p>
+        </section>
+
+        <footer className="foot">
+          <div className="mark">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/favicon.ico" alt="PresentPro" />
+            <span className="wm-name">PresentPro</span>
+            <span className="wm-line">{TAGLINE}</span>
+          </div>
+          <div className="colophon">
+            <div className="links">
+              <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+                GitHub
+              </a>{" "}
+              &middot;{" "}
+              <a
+                href={`${GITHUB_URL}/issues`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Report an issue
+              </a>{" "}
+              &middot; <Link href="/support">Support</Link>
+            </div>
+            <p className="ethos">Rehearsal you can actually measure.</p>
+          </div>
+        </footer>
+      </main>
     </div>
   );
 }

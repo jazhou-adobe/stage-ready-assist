@@ -1,4 +1,4 @@
-# Stage Ready Assist
+# PresentPro
 
 A speech-practice teleprompter app for rehearsing and analysing your delivery. Paste a script, record a session, and get instant analytics on pace, filler words, and pauses — plus a downloadable MP4 of your practice run.
 
@@ -76,7 +76,8 @@ The `DATABASE_URL` environment variable is injected automatically by the Neon Ve
 ```
 src/
   app/
-    page.tsx          # Dashboard
+    page.tsx          # Landing page (marketing)
+    dashboard/        # Dashboard: paste script, recent sessions
     practice/         # Teleprompter + recording
     report/           # Session analytics + MP4 download
     feedback/         # Feedback form

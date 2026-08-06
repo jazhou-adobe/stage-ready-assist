@@ -26,11 +26,10 @@ type NavItem = {
   disabledTooltip?: string;
 };
 
-const FULLSCREEN_PREFIXES = ["/practice"];
+const SHELL_BYPASS_PATHS = ["/", "/practice", "/start"];
 
 function isActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
-  if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -89,7 +88,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (
     pathname &&
-    FULLSCREEN_PREFIXES.some(
+    SHELL_BYPASS_PATHS.some(
       (p) => pathname === p || pathname.startsWith(`${p}/`),
     )
   ) {
@@ -100,7 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const hasResult = result !== null;
 
   const primaryNav: NavItem[] = [
-    { label: "Dashboard", href: "/", icon: LayoutDashboard },
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     {
       label: "Studio Mode",
       href: "/practice",

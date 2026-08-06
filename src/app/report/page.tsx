@@ -105,7 +105,7 @@ function EmptyReport() {
         Run a practice session to see your delivery analytics here.
       </p>
       <Link
-        href="/"
+        href="/dashboard"
         className="mt-2 inline-flex h-10 items-center rounded-md bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
       >
         Start a new session

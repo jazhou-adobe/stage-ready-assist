@@ -25,6 +25,7 @@ import { useWebcam } from "@/hooks/useWebcam";
 import { useAppStore } from "@/lib/store";
 import { setRecordingBlob } from "@/lib/recordingBlobStore";
 import { computeScore, gradeFromScore, summaryLine } from "@/lib/grading";
+import { formatElapsed, computeAvgWpm, sumValues } from "@/lib/metrics";
 import { splitSentences } from "@/lib/script";
 import type {
   MetricsSample,
@@ -42,31 +43,12 @@ const SILENCE_HINT_MS = 5000;
 const SILENCE_CHECK_MS = 500;
 const LONG_PAUSE_MS = 1500;
 
-const formatElapsed = (totalSec: number): string => {
-  const sec = Math.max(0, Math.floor(totalSec));
-  const mm = Math.floor(sec / 60).toString().padStart(2, "0");
-  const ss = (sec % 60).toString().padStart(2, "0");
-  return `${mm}:${ss}`;
-};
-
 const renderMasked = (text: string): string => {
   let out = "";
   for (const ch of text) {
     out += /\s/.test(ch) ? ch : "·";
   }
   return out;
-};
-
-const computeAvgWpm = (transcript: string, durationSec: number): number => {
-  if (durationSec <= 0) return 0;
-  const words = transcript.trim().split(/\s+/).filter(Boolean).length;
-  return words / (durationSec / 60);
-};
-
-const sumValues = (record: Record<string, number>): number => {
-  let total = 0;
-  for (const v of Object.values(record)) total += v;
-  return total;
 };
 
 export default function PracticePage() {
@@ -484,7 +466,7 @@ export default function PracticePage() {
     speech.stop();
     webcam.stop();
     setRecordingBlob(null);
-    router.push("/");
+    router.push("/dashboard");
   }, [audio, speech, webcam, recording, router]);
 
   const onStop = useCallback(async () => {
@@ -671,8 +653,11 @@ export default function PracticePage() {
         ? webcam.error
         : null);
 
-  const speechUnsupported =
-    !speech.supported && typeof window !== "undefined";
+  // Don't gate on typeof window: speech.supported already resolves safely
+  // through useSyncExternalStore (false during SSR/hydration, corrected right
+  // after) — adding a window check here re-introduces a hydration mismatch,
+  // since `window` exists on the client's very first (hydration-matching) pass.
+  const speechUnsupported = !speech.supported;
 
   return (
     <main

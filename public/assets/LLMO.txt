@@ -1,0 +1,35 @@
+{{CHROME EXTENSION}}
+- Before I jump into LLM Optimizer, let's first take a look at our Frescopa website and see how citable it is.
+- Using our LLM Optimizer Chrome extension, a free, standalone diagnostic tool, we can assess Frescopa's machine-readability with just one click.
+- And, well... it looks like Frescopa just is not a part of the conversation at all.
+- Let's jump into LLM Optimizer to see how we can improve our presence within AI search.
+
+{{BRAND PRESENCE}}
+- Here in LLM Optimizer, I see an overview of everything I need to know about how my brand is appearing in conversations with LLMs.
+- At a glance, I can see key metrics:
+    - Brand Mentions and Citations versus my top competitors week over week.
+    - Sentiment Analysis: And it's not just about *if* you're mentioned — it's about *how* you're perceived. We extract sentiment directly from AI responses, so you can see whether Frescopa is showing up in a positive, neutral, or negative light. That way, the brand can quickly identify and address any negative sentiment before it impacts reputation.
+    - Data Insights: And here we see Data tied to different topics that we are tracking — from general coffee knowledge to roasting techniques and more.
+LLM Optimizer shows we're in a top position, and we are being mentioned in the answer with content that is cited.
+I can also see even deeper citation trends — with prompts and topics where the URL has been cited.
+With this Share of Voice tab, I can compare how our brand is showing up relative to other brands.
+
+{{AGENTIC TRAFFIC}}
+- In addition to Brand Presence, we can also look at Agentic Traffic.
+- This data identifies exactly what content is being accessed by crawlers used by LLMs, and from what country.
+- We can see the top product categories and pages being accessed by agentic crawlers.
+- These act as a leading indicator to the types of prompts being requested by consumers in LLMs, and helps the team infer the types of requests being made.
+We can see that the top pages being accessed focus on --- the home page, details on Frescopa tea, coffee, and beans.
+
+{{REFERRAL TRAFFIC}}
+- This section tracks those real user visits coming from citations in AI responses as well as all referral traffic coming to the frescopa.com site.
+- Here, you can see how much traffic is being driven by LLMs, which pages are attracting users, and how that compares over time. It's a powerful way to connect visibility in AI search directly to site engagement.
+
+{{OPTIMIZATION OPPORTUNITY}}
+- Finally, LLM optimizer also proactively notifies me of opportunities for improvement.
+- There are opportunities to enhance Frescopa's on-site content, technical accessibility by LLMs, and even external opportunities to boost brand presence and earn mentions.
+- Let's dig into some of the Technical GEO issues.
+- With all of the 404 errors, there's a high chance that AI agents will drive less traffic to my site. LLM Optimizer identifies these broken URLs and even provides simple suggestions to redirect them.
+- You'll notice that there are also great suggestions from LLM Optimizer to get involved in the conversation externally -- via social media, community, and earned content.
+- Here I see an opportunity to contribute to User Generated Content Websites like Reddit where I can naturally insert Frescopa into conversations around coffee brewing methods for example -- This allows posts to get upvoted, cited and shared, creating organic visibility and long-term brand mentions.
+- When I dig in, I am provided key observations, an analysis, and even recommendations to improve performance.
