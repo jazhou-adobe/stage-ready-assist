@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "Stage Ready — Practice Panel",
+  "version": "0.1.0",
+  "description": "Open the Stage Ready practice app in a panel window beside your page.",
+  "permissions": ["storage"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Practice with Stage Ready" }
+}
