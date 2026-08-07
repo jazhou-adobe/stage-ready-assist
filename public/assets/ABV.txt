@@ -1,0 +1,91 @@
+{{INTRO}}
+- Brands today must dual-optimize their websites - for both humans and the machines that are crawling them.
+- I'm excited to show you how we are expanding Brand Visibility for adobe.com with Adobe Brand Concierge, Adobe LLM optimizer and new Experience Platform Agents.
+- The data and workflows in this demo are fictitious, but the use case is very real.
+- Let's jump in.
+
+{{STEP 1}}
+Let's say I'm a college student, and I also happen to be an avid sci-fi writer.
+After doing some research about creative products on Gemini, I head to adobe.com. Here you'll notice that I can engage Adobe Brand Concierge right here. Let's try it out!
+[PROMPT] I'm taking a creative writing class at Rutgers. What products could I use to create images for a sci-fi book that I am writing?
+Product Advisor Agent, which is a part of Brand Concierge, provides me with some helpful info.
+
+{{STEP 2}}
+[PROMPT] I am looking for tools on multimedia production and ask to learn more about Firefly.
+This is exciting because now the conversation has gone multimodal, showing me an overview video of Firefly that was pulled from our asset repository.
+
+{{STEP 3}}
+So cool -- and now I just need to know something -- can I try out Firefly even though I'm using a Brand Concierge?
+[PROMPT] Can I try Firefly now?
+And check this out - right within my conversation, Brand Concierge is engaging Adobe Firefly agents. This is all thanks to the extensibility of Brand Concierge.
+Let's generate my main character --
+[PROMPT] a tall, skinny, humanoid robot roaming the surface of Mars
+and .. go.
+Now this is cool, I. Am. Sold.
+Let's dig into the available product plans.
+
+{{STEP 4}}
+Here, I am provided with a product plan comparison chart that Brand Concierge has personalized for me, remembering that I'm a student from earlier.
+
+{{STEP 5}}
+Finally, I can continue the checkout process.
+Consumers are now *expecting* experiences like this and Brand Concierge makes it all possible.
+Let's see how.
+
+{{STEP 6}}
+I'll start in the Adobe Brand Concierge dashboard where I can optimize and measure the experience. I can configure our concierge with different skills and modify brand expression.
+
+{{STEP 7}}
+Then on the feedback tab I can view the performance of conversations and their sentiment.
+
+{{STEP 8}}
+I can also review our concierge layout and add any other components. For example, I could consider adding a meeting booking functionality for B2B scenarios.
+As you can see, Adobe Brand Concierge is all about helping Marketers optimize their conversational experiences with low-code editing tools.
+
+{{STEP 9}}
+But Brand Visibility requires more than optimizing a Brand Concierge on your website.
+Next, let's go to Adobe LLM Optimizer to see how I might improve Brand Visibility on LLM's like ChatGPT and Perplexity.
+
+{{STEP 10}}
+When I check our Opportunities I see a brand-new type of optimization -- Auto Optimize on Edge.
+
+{{STEP 11}}
+Oh interesting, across thousands of pages, only 17% of content is AI-readable.
+
+{{STEP 12}}
+When I preview this, I can see what humans see on the right, and the AI Agent sees on the left. Yikes -- there's a ton of valuable content that is missing.
+Thankfully, we have an easy button. In fact, Adobe.com recently used this easy button to optimize over 10,000 pages!
+
+{{STEP 13}}
+We'll go ahead and Optimize on the Edge. And, Amazing.
+What's even more impressive is that customers can now begin using this feature to ensure their content is machine-readable, regardless of which CMS or CDN they are using.
+
+{{STEP 14}}
+There's one last item I'd like to show you before we finish. I'm going to highlight some new Experience Platform Agents that were just released in Experience Manager. The adobe.com SEO team recently used them to deliver new pages and are projecting a 56% increase in production this quarter.
+
+{{STEP 15}}
+Imagine I'm getting ready to head out for the holidays when a request to update the Firefly homepage with a wintry feel comes in.
+No problem -- let's engage some brand-new Agents for help.
+First thing's first, let's take a quick look at the Firefly product page. It does look nice, but I have some ideas.
+
+{{STEP 16}}
+Let's head to AI Assistant in Experience Cloud to find some content.
+[PROMPT] Find assets tagged as winter background in the last 12 months in the Firefly folder.
+
+{{STEP 17}}
+AI Assistant is now tapping into Discovery Agent to find what I'm looking for. This one looks great to me.
+Next, I'll engage the Experience Production Agent to update the Firefly product page with this asset.
+
+{{STEP 18}}
+[PROMPT] On firefly.adobe.com: Update the image the new one, and let's rewrite the headlines to have a wintry theme too.
+And .. great! Looks like we're ready to preview how things look.
+
+{{STEP 19}}
+Oh I love it! Just the wintry feel I was going for.
+We've got my beautiful wintry background, along with some inspired holiday cheer in the headlines -- creative space for the holidays .. some frosty creations .. and even a cup of hot cocoa to go along with our best-in-class models.
+Once ready, I could deploy these changes with the help of Governance Agent and Development Agent to ensure everything is compliant and modernized.
+
+{{OUTRO}}
+And that's everything I have for you today!
+Guided conversational interfaces and optimized content to increase Brand Visibility for both humans and LLMs.
+Thank you

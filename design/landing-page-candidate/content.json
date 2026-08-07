@@ -1,0 +1,160 @@
+{
+  "type": "landing-page",
+  "lang": "en",
+  "brief": {
+    "audience": "Anyone rehearsing a presentation, pitch, or talk who wants objective feedback before the real thing",
+    "job": "Get a first-time visitor to paste a script and start a practice session",
+    "template": "landing-page-en",
+    "formats": [
+      "html"
+    ],
+    "page_target": 1,
+    "narrative": "Real screenshots of the shipped tool, structured as facts and mechanics rather than adjectives: free, local-only, arithmetic scoring",
+    "required_facts": [
+      "scoring formula",
+      "browser compatibility",
+      "privacy / local-only storage"
+    ],
+    "required_assets": [
+      "dashboard screenshot",
+      "practice/teleprompter screenshot",
+      "analytics screenshot"
+    ],
+    "acceptance_checks": [
+      "no fabricated metrics, testimonials, or competitor claims",
+      "gallery images are real captures of the shipped app, not stock imagery",
+      "responsive at 375px and 1280px with no line widows or sparse blocks"
+    ],
+    "preserve": [],
+    "explicit_deviations": [
+      "pricing section kept per template but priced at Free — there is no paid tier",
+      "no comparisons array — no named competitor pricing was verified, so the field is omitted rather than guessed"
+    ]
+  },
+  "content": {
+    "category": "browser-based speech-practice app",
+    "product_name": "PresentPro",
+    "tagline": "Practice out loud and watch your pace fix itself.",
+    "facts": [
+      "Free forever",
+      "0 signups",
+      "2 browsers supported",
+      "MP4 local recording"
+    ],
+    "cta": {
+      "primary": "Start Practicing Free",
+      "secondary": "See How It Works"
+    },
+    "gallery": [
+      {
+        "image": "./img/dashboard.webp",
+        "caption": "Paste a script, give it a title, go."
+      },
+      {
+        "image": "./img/practice.webp",
+        "caption": "The words scroll. You just have to say them."
+      },
+      {
+        "image": "./img/analytics.png",
+        "caption": "Every filler word, timestamped."
+      }
+    ],
+    "features": [
+      {
+        "name": "Teleprompter",
+        "subtitle": "Your script, paced for the room",
+        "description": "A fullscreen scrolling script highlights the sentence you're on and fades the rest, with font-size controls so it reads at arm's length or across a room."
+      },
+      {
+        "name": "Live Pace & Filler Tracking",
+        "subtitle": "Every ‘um’ counted while you talk",
+        "description": "The Web Speech API tracks words-per-minute and flags filler words in real time as you speak, so the habit shows up while it's still happening, not after."
+      },
+      {
+        "name": "Pause Detection",
+        "subtitle": "Know when the room went quiet",
+        "description": "The Web Audio API monitors volume and flags pauses past 1.5 seconds. Long silences cost points in the score, the same way they'd cost attention in the room."
+      },
+      {
+        "name": "Local Session Recording",
+        "subtitle": "Webcam and mic, saved as MP4",
+        "description": "Practice sessions record locally using WebCodecs and download as an MP4 from the report page. The file never leaves the browser unless the download button does."
+      },
+      {
+        "name": "Score & Breakdown",
+        "subtitle": "Pace, fillers, and pauses, spelled out",
+        "description": "Score starts at 100 and subtracts the filler count, 5 points per long pause, and a penalty for speaking outside 110–170 words per minute. Sentence-by-sentence pace and a filler timeline back it up."
+      },
+      {
+        "name": "Recent Scripts",
+        "subtitle": "Your last 10 sessions, one click away",
+        "description": "Scripts and their last session summary save to the browser's local storage, so picking up a prior rehearsal takes one click, not a re-paste."
+      }
+    ],
+    "principles": [
+      {
+        "title": "Nothing leaves your browser",
+        "description": "Scripts, recordings, and session data stay local. There are no accounts and no servers for practice content."
+      },
+      {
+        "title": "The score is arithmetic, not a verdict",
+        "description": "It's a fixed formula — filler count, pause count, and pace — not a model guessing at talent. Read it as a nudge, not a grade."
+      },
+      {
+        "title": "No signup between you and a script",
+        "description": "Paste a script and start. There's no account wall before the first session."
+      },
+      {
+        "title": "Honest about browser support",
+        "description": "Speech recognition needs Chrome or Edge. Recording needs Chrome 94+ or Safari 16.4+. Everything else degrades gracefully instead of breaking silently."
+      }
+    ],
+    "pricing": {
+      "price": "Free",
+      "benefits": [
+        "Full teleprompter, recording, and analytics",
+        "Unlimited practice sessions",
+        "Session history stored only on your device",
+        "No subscription, ever"
+      ],
+      "terms": "Speech recognition requires Chrome or Edge; recording requires Chrome 94+ or Safari 16.4+."
+    },
+    "faq": [
+      {
+        "q": "How is this different from a generic teleprompter app?",
+        "a": "A teleprompter just scrolls text. This one also tracks pace, flags filler words, detects pauses, and scores the session afterward."
+      },
+      {
+        "q": "Does my script or recording get uploaded anywhere?",
+        "a": "No. Scripts, recordings, and session data stay in the browser. The only server call is the feedback form, and that's opt-in."
+      },
+      {
+        "q": "Which browsers are supported?",
+        "a": "Speech recognition (pace and filler tracking) needs Chrome or Edge. Session recording needs Chrome 94+ or Safari 16.4+."
+      },
+      {
+        "q": "How is the score calculated?",
+        "a": "100, minus the filler count, minus 5 points per long pause, minus a penalty for speaking outside 110–170 words per minute. No model, just arithmetic."
+      },
+      {
+        "q": "Can I download my practice recording?",
+        "a": "Yes. If the webcam and mic were on, the report page has a local MP4 download link."
+      },
+      {
+        "q": "Do I need to sign up?",
+        "a": "No. Paste a script on the dashboard and start practicing."
+      },
+      {
+        "q": "What happens to my recent scripts?",
+        "a": "The last 10 scripts, and each one's last session summary, save to the browser's local storage, not a server."
+      },
+      {
+        "q": "Is this ready for phones and tablets?",
+        "a": "Not yet. It relies on desktop-grade Web Speech and WebCodecs APIs, so it's built and tested for desktop Chrome, Edge, and Safari."
+      }
+    ],
+    "footer": {
+      "ethos": "Rehearsal you can actually measure."
+    }
+  }
+}

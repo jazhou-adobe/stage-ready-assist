@@ -1,0 +1,80 @@
+{{STEP 1}}
+I'm a marketing specialist at a large outdoor company.
+I'm planning a new campaign for Weekend Hiking and I want to highlight some of my products that customers may not have bought yet, ideally ones that can be used for both backpackers and day hikers.
+Let's see how AI Assistant can help me build a personalized promotion.
+But, before I get started, lets analyze some data. I ask AI Assistant to:
+Show me the revenue by product subcategory for Camping in June. I want the top 20.
+[PROMPT] Show me the revenue by product subcategory for Camping in June. I want the top 20
+
+{{STEP 2}}
+AI Assistant quickly pulls in the right information from Customer Journey Analytics to show me purchase information for my top products from June.
+It's a bit of a long list, so I'll ask for AI Assistant to help me narrow this down:
+From the table above, which ones can be used for both backpackers and day hikers?
+[PROMPT] From the table above, which ones can be used for both backpackers and day hikers?
+
+{{STEP 3}}
+That narrows things down for me, I'll focus on these products when we get into the details of my campaign.
+Let's get started!
+Please help me plan an email marketing campaign for the fall. My focus will be to target "weekend hiking". I want to experiment with two variants.
+[PROMPT] Please help me plan an email marketing campaign for the fall. My focus will be to target "weekend hiking". I want to experiment with two variants
+
+{{STEP 4}}
+Once I submit this prompt, AI Assistant comes back with a full plan on executing the campaign.
+Let's take a minute to unpack what we are seeing here.
+The first thing I see is AI Assistant reasons to make sure that it is understanding my question and uses that to come up with a complete plan.
+The plan has a goal as well as four different phases including creating audiences, setting up the journey, generating new content, and setting up some monitoring and scheduling.
+Each phase also has certain subtasks and statuses.
+I realized that I have missed out on a few details on the audience creation. I'll add some audience specifications, including some of the information from earlier in the conversation.
+[PROMPT] Let's make sure the audience is at least 10,000 profiles, and let's target people who have viewed backpacks and tents but have not purchased recently
+
+{{STEP 5}}
+As you can see, it's gone ahead and added a new constraint to my plan regarding the audience size.
+One last thing before we proceed.
+I want to remove the monitoring phase for my plan.
+I think I'll just do that later.
+[PROMPT] Remove the monitoring phase for now, I can do that later
+
+{{STEP 6}}
+Once again, AI Assistant has quickly adjusted the plan. The updates look great.
+So let's proceed with the first phase -- to build a targeted audience.
+[PROMPT] Yes, let's proceed with the plan.
+
+{{STEP 7}}
+I see that AI Assistant has gone ahead and performed a few steps of this phase, including discovering XDM fields, translating that to an audience definition, and estimating the audience size.
+The audience size is in the right range for the constraint that I've given it for 10,000, so I'll go ahead with this audience.
+[PROMPT] Yes, let's proceed and create the audience
+
+{{STEP 8}}
+You can see here on the right, that this has gone from "In progress" to "complete".
+It created the audience, and I can always access it on the audience portal to make any additional changes if needed.
+Now that Phase 1 is complete, I'm guided to the next phase of our plan -- to configure and create the email journey.
+Let's proceed!
+[PROMPT] Yes, please proceed with drafting the journey
+
+{{STEP 9}}
+AI Assistant responds with the specifications of the journey that it recommends I create.
+As you can see, this is a pretty complex journey, including certain branches for the experimentation as well as entry and exit criteria.
+It also shows me the journey specifications in natural language for my review, making these technical details easy for me to understand.
+It's looking good, let's go ahead and create the journey.
+[PROMPT] This plan sounds good, please create the journey
+
+{{STEP 10}}
+AI Assistant comes back to me with the fully created journey and shows me the name and the unique ID of the journey that's created.
+I can make edits from here or go directly into Adobe Journey Optimizer and make edits there.
+The last phase of this plan is to set up content.
+I ask AI Assistant "what content variations should I use" for my weekend hiking campaign.
+[PROMPT] Yes please. What content variations should I use?
+
+{{STEP 11}}
+AI Assistant analyzes past performance of my content and picks the top three themes that it thinks will do well.
+These look pretty good to me, so I'm going to ask it to generate 2 variants.
+[PROMPT] Yes, let's generate new content.
+
+{{STEP 12}}
+Both of these variants feel very on theme for me, I think they could really perform well for my hiking campaign.
+[PROMPT] These look good! Lets proceed
+
+{{STEP 13}}
+As you can see now, all three phases of my plan are now complete and I think my work here is done.
+Thank you, AI Assistant.
+[PROMPT] Thank you! /sparkles

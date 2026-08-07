@@ -24,7 +24,13 @@ import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useWebcam } from "@/hooks/useWebcam";
 import { useAppStore } from "@/lib/store";
 import { setRecordingBlob } from "@/lib/recordingBlobStore";
-import { computeScore, gradeFromScore, summaryLine } from "@/lib/grading";
+import {
+  computeCompleteness,
+  computeScore,
+  gradeFromScore,
+  summaryLine,
+} from "@/lib/grading";
+import { formatElapsed, computeAvgWpm, sumValues } from "@/lib/metrics";
 import { splitSentences } from "@/lib/script";
 import type {
   MetricsSample,
@@ -42,31 +48,12 @@ const SILENCE_HINT_MS = 5000;
 const SILENCE_CHECK_MS = 500;
 const LONG_PAUSE_MS = 1500;
 
-const formatElapsed = (totalSec: number): string => {
-  const sec = Math.max(0, Math.floor(totalSec));
-  const mm = Math.floor(sec / 60).toString().padStart(2, "0");
-  const ss = (sec % 60).toString().padStart(2, "0");
-  return `${mm}:${ss}`;
-};
-
 const renderMasked = (text: string): string => {
   let out = "";
   for (const ch of text) {
     out += /\s/.test(ch) ? ch : "·";
   }
   return out;
-};
-
-const computeAvgWpm = (transcript: string, durationSec: number): number => {
-  if (durationSec <= 0) return 0;
-  const words = transcript.trim().split(/\s+/).filter(Boolean).length;
-  return words / (durationSec / 60);
-};
-
-const sumValues = (record: Record<string, number>): number => {
-  let total = 0;
-  for (const v of Object.values(record)) total += v;
-  return total;
 };
 
 export default function PracticePage() {
@@ -95,6 +82,7 @@ export default function PracticePage() {
   const scriptWords = useMemo(() => {
     const words: Array<{ word: string; sentenceIndex: number }> = [];
     sentences.forEach((s, si) => {
+      if (s.isHint) return; // `{{ ... }}` cues are not spoken words
       s.text.split(/\s+/).filter(Boolean).forEach((w) => {
         words.push({ word: w.toLowerCase().replace(/[^a-z0-9']/g, ""), sentenceIndex: si });
       });
@@ -250,7 +238,7 @@ export default function PracticePage() {
     await audio.start();
     speech.start();
     await webcam.start();
-    recording.startRecording(webcam.stream, audio.getStream());
+    recording.startRecording(audio.getStream());
     startedAtRef.current = performance.now();
     pausedAccumRef.current = 0;
     pausedAtRef.current = null;
@@ -484,7 +472,7 @@ export default function PracticePage() {
     speech.stop();
     webcam.stop();
     setRecordingBlob(null);
-    router.push("/");
+    router.push("/dashboard");
   }, [audio, speech, webcam, recording, router]);
 
   const onStop = useCallback(async () => {
@@ -545,12 +533,19 @@ export default function PracticePage() {
         finalSamples.length
       : 0;
     const avgWpm = computeAvgWpm(finalTranscript, durationSec);
-    const score = computeScore({ avgWpm, fillerCount, longPauseCount });
+    const completeness = computeCompleteness(script, finalTranscript);
+    const score = computeScore({
+      avgWpm,
+      fillerCount,
+      longPauseCount,
+      completeness,
+    });
     const grade = gradeFromScore(score);
     const sumLine = summaryLine({
       avgWpm,
       fillerCount,
       longPauseCount,
+      completeness,
       score,
     });
 
@@ -589,7 +584,7 @@ export default function PracticePage() {
       saveScriptSession(scriptId, summary);
     }
 
-    router.push("/report");
+    router.push("/report2");
   }, [
     audio,
     speech,
@@ -671,8 +666,11 @@ export default function PracticePage() {
         ? webcam.error
         : null);
 
-  const speechUnsupported =
-    !speech.supported && typeof window !== "undefined";
+  // Don't gate on typeof window: speech.supported already resolves safely
+  // through useSyncExternalStore (false during SSR/hydration, corrected right
+  // after) — adding a window check here re-introduces a hydration mismatch,
+  // since `window` exists on the client's very first (hydration-matching) pass.
+  const speechUnsupported = !speech.supported;
 
   return (
     <main
@@ -737,6 +735,7 @@ export default function PracticePage() {
                     key={i}
                     index={i}
                     text={sentence.text}
+                    isScriptHint={sentence.isHint}
                     isCurrent={i === displayedCurrentIndex}
                     distance={Math.abs(i - displayedCurrentIndex)}
                     masked={masked}
@@ -799,6 +798,7 @@ export default function PracticePage() {
 function SentenceRow({
   index,
   text,
+  isScriptHint,
   isCurrent,
   distance,
   masked,
@@ -810,6 +810,7 @@ function SentenceRow({
 }: {
   index: number;
   text: string;
+  isScriptHint: boolean;
   isCurrent: boolean;
   distance: number;
   masked: boolean;
@@ -821,15 +822,18 @@ function SentenceRow({
 }) {
   const opacity = isHinted || isRandomStart
     ? 1
-    : isCurrent
-      ? 1
-      : Math.max(0, 1 - distance * FADE_PER_STEP - (distance > FADE_LIMIT ? 1 : 0));
+    : isScriptHint
+      ? 0.5
+      : isCurrent
+        ? 1
+        : Math.max(0, 1 - distance * FADE_PER_STEP - (distance > FADE_LIMIT ? 1 : 0));
 
-  const showMasked = masked && !isHinted && !isRandomStart;
+  // `{{ ... }}` cues are never masked and never take the enlarged "current" size.
+  const showMasked = masked && !isHinted && !isRandomStart && !isScriptHint;
   const display = showMasked ? renderMasked(text) : text;
 
   const style: CSSProperties = {
-    fontSize: isCurrent ? `calc(${fontPx} * 1.25)` : fontPx,
+    fontSize: isCurrent && !isScriptHint ? `calc(${fontPx} * 1.25)` : fontPx,
     opacity,
   };
 
@@ -845,7 +849,11 @@ function SentenceRow({
         "block max-w-full cursor-pointer text-center font-medium leading-tight",
         "transition-[opacity,transform,font-size,color] duration-300",
         "select-none whitespace-pre-wrap break-words",
-        isCurrent && !isRandomStart ? "text-white" : "text-neutral-300",
+        isScriptHint
+          ? "italic text-neutral-500"
+          : isCurrent && !isRandomStart
+            ? "text-white"
+            : "text-neutral-300",
         showMasked && "text-neutral-500/70 tracking-wide",
         isHinted &&
           "rounded-2xl px-6 py-3 text-amber-100 ring-2 ring-amber-300/70 shadow-[0_0_40px_-10px_rgba(251,191,36,0.65)] animate-in fade-in",

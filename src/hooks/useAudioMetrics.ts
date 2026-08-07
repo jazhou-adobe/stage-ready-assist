@@ -20,7 +20,7 @@ export type UseAudioMetricsResult = {
 const SAMPLE_INTERVAL_MS = 50;
 const SILENCE_THRESHOLD = 0.05;
 const SILENCE_WINDOW_SAMPLES = 6; // ~300ms rolling average
-const PAUSE_MIN_DURATION_MS = 700;
+const PAUSE_MIN_DURATION_MS = 5000; // only silences of 5s+ count as a pause
 const RENDER_TICK_MS = 200;
 
 type WebkitWindow = Window & {
