@@ -1683,6 +1683,19 @@
   .kami-landing .practice2-transport { gap: 12px; }
 }
 
+/* Very narrow panels (e.g. the Chrome extension window below the 480px
+   default): drop the switch text labels (icon + title tooltip remain) and let
+   the control bar wrap/center so nothing clips. Scoped under 460px so the
+   default panel width is untouched. */
+@media (max-width: 460px) {
+  .kami-landing .practice2-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 12px;
+  }
+  .kami-landing .practice2-switch-label { display: none; }
+}
+
 /* ========== Report2 (session report, landing-style) ========== */
 .kami-landing.report2-page { min-height: 100vh; }
 .kami-landing .report2 .hero h1 { font-size: 56px; }

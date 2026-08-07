@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stage Ready — Options</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 28px;
+        max-width: 520px;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      p.sub {
+        margin: 0 0 20px;
+        opacity: 0.7;
+        font-size: 13px;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        font-size: 13px;
+        margin: 16px 0 6px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        font-size: 14px;
+        border: 1px solid rgba(128, 128, 128, 0.5);
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+      }
+      .hint {
+        font-size: 12px;
+        opacity: 0.6;
+        margin-top: 4px;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-top: 24px;
+      }
+      button {
+        padding: 9px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      #save {
+        background: #2563eb;
+        color: #fff;
+      }
+      #reset {
+        background: transparent;
+        border: 1px solid rgba(128, 128, 128, 0.5);
+        color: inherit;
+      }
+      #status {
+        font-size: 13px;
+        color: #16a34a;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      #status.show {
+        opacity: 1;
+      }
+      .err {
+        color: #dc2626 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Stage Ready — Practice Panel</h1>
+    <p class="sub">Configure the panel window.</p>
+
+    <label for="url">App URL</label>
+    <input id="url" type="url" placeholder="https://stage-ready-ashen.vercel.app/start" />
+    <div class="hint">
+      The page opened in the panel. Use
+      <code>http://localhost:3000/start</code> for local development.
+    </div>
+
+    <label for="width">Panel width (px)</label>
+    <input id="width" type="number" min="320" max="1200" step="10" />
+    <div class="hint">Between 320 and 1200. Default 480.</div>
+
+    <div class="row">
+      <button id="save" type="button">Save</button>
+      <button id="reset" type="button">Reset to defaults</button>
+      <span id="status">Saved</span>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

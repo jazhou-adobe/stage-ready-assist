@@ -3,9 +3,20 @@
 // browsing context, so mic/camera/Web Speech work (unlike a side panel, whose
 // cross-origin iframe is denied getUserMedia — see docs/chrome-extension-spec.md).
 
-const APP_URL = "https://stage-ready-ashen.vercel.app/start";
-const PANEL_WIDTH = 480;
+const DEFAULTS = {
+  appUrl: "https://stage-ready-ashen.vercel.app/start",
+  panelWidth: 480,
+};
 const TRACK_KEY = "panelWindowId";
+
+async function getConfig() {
+  const cfg = await chrome.storage.sync.get(DEFAULTS);
+  const panelWidth = Number(cfg.panelWidth);
+  return {
+    appUrl: cfg.appUrl || DEFAULTS.appUrl,
+    panelWidth: Number.isFinite(panelWidth) ? panelWidth : DEFAULTS.panelWidth,
+  };
+}
 
 async function getTrackedId() {
   const { [TRACK_KEY]: id } = await chrome.storage.session.get(TRACK_KEY);
@@ -30,7 +41,7 @@ async function openPanel() {
   }
 
   // Dock to the right edge of the currently focused window.
-  let width = PANEL_WIDTH;
+  const { appUrl, panelWidth } = await getConfig();
   let height = 800;
   let top = 0;
   let left = 0;
@@ -38,15 +49,15 @@ async function openPanel() {
     const cur = await chrome.windows.getCurrent();
     height = cur.height ?? height;
     top = cur.top ?? 0;
-    left = Math.max(0, (cur.left ?? 0) + (cur.width ?? 1280) - PANEL_WIDTH);
+    left = Math.max(0, (cur.left ?? 0) + (cur.width ?? 1280) - panelWidth);
   } catch {
     /* fall back to defaults */
   }
 
   const win = await chrome.windows.create({
-    url: APP_URL,
+    url: appUrl,
     type: "popup",
-    width,
+    width: panelWidth,
     height,
     top,
     left,
