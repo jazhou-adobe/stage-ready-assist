@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { useAppStore } from "@/lib/store";
 import { getRecordingBlob } from "@/lib/recordingBlobStore";
 import {
+  computeCompleteness,
   computeScore,
   gradeFromScore,
   summaryLine,
@@ -121,9 +122,11 @@ function ReportContent({
   result: SessionResult;
   onRepractice: () => void;
 }) {
-  const sentences = useMemo(() => splitSentences(result.script), [
-    result.script,
-  ]);
+  // `{{ ... }}` cues aren't spoken words — keep them out of per-sentence pace.
+  const sentences = useMemo(
+    () => splitSentences(result.script).filter((s) => !s.isHint),
+    [result.script],
+  );
   const { buckets } = useMemo(
     () => paceBucketsForSentences(result.samples, sentences),
     [result.samples, sentences],
@@ -138,12 +141,19 @@ function ReportContent({
   const longPauseCount = result.pauses.filter(
     (p) => p.end - p.start >= LONG_PAUSE_MS,
   ).length;
-  const score = computeScore({ avgWpm, fillerCount, longPauseCount });
+  const completeness = computeCompleteness(result.script, result.transcript);
+  const score = computeScore({
+    avgWpm,
+    fillerCount,
+    longPauseCount,
+    completeness,
+  });
   const grade = gradeFromScore(score);
   const summary = summaryLine({
     avgWpm,
     fillerCount,
     longPauseCount,
+    completeness,
     score,
   });
 

@@ -26,7 +26,7 @@ type NavItem = {
   disabledTooltip?: string;
 };
 
-const SHELL_BYPASS_PATHS = ["/", "/practice", "/start"];
+const SHELL_BYPASS_PATHS = ["/", "/practice", "/start", "/report2"];
 
 function isActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
@@ -81,6 +81,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     useAppStore.persist.rehydrate();
+    // Restore the in-flight session (report + recording) from sessionStorage so
+    // a refresh on /report2 keeps the report instead of asking for a new one.
+    useAppStore.getState().hydrateResult();
   }, []);
 
   const script = useAppStore((s) => s.script);
@@ -109,7 +112,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     },
     {
       label: "Analytics",
-      href: "/report",
+      href: "/report2",
       icon: BarChart3,
       disabled: !hasResult,
       disabledTooltip: "Complete a session to view analytics",

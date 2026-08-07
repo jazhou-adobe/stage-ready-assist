@@ -30,28 +30,28 @@ const STAGE_READY_PROGRAM_URL =
 
 const GALLERY_PANELS: GalleryPanel[] = [
   {
-    title: "Dashboard",
+    title: "Start",
     line: "Paste a script, give it a title, go.",
-    image: "/landing/dashboard.webp",
-    alt: "PresentPro dashboard with a script pasted in and two recent sessions listed",
+    image: "/landing/start.webp",
+    alt: "PresentPro start page with a script pasted into the form and recent sessions listed",
     width: 1024,
-    height: 995,
+    height: 868,
   },
   {
     title: "Studio Mode",
     line: "The words scroll. You just have to say them.",
-    image: "/landing/practice.webp",
-    alt: "PresentPro teleprompter in idle mode with the current sentence highlighted",
+    image: "/landing/practice2.webp",
+    alt: "PresentPro teleprompter with the current sentence highlighted and live pace, volume, and filler metrics",
     width: 1024,
-    height: 640,
+    height: 608,
   },
   {
     title: "Analytics",
     line: "Every filler word, timestamped.",
-    image: "/landing/analytics.png",
-    alt: "PresentPro session analytics with score, pace chart, and filler word list",
-    width: 1200,
-    height: 1227,
+    image: "/landing/report2.webp",
+    alt: "PresentPro session report with an overall score, per-sentence pace flow, and a timestamped filler word list",
+    width: 828,
+    height: 1024,
   },
 ];
 

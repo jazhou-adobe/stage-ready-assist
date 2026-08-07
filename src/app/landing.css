@@ -1204,6 +1204,23 @@
   color: var(--brand);
   font-weight: 700;
 }
+.kami-landing .practice2-sentence {
+  cursor: pointer;
+}
+/* Masked: dots replace glyphs — mute the color and open the tracking so the
+   shapes read as placeholders, not words. */
+.kami-landing .practice2-sentence.is-masked {
+  color: var(--line);
+  letter-spacing: 0.12em;
+}
+/* `{{ ... }}` presenter cue — a quiet, italic stage direction that is never
+   masked and never the "current" line. */
+.kami-landing .practice2-sentence.is-hint {
+  font-style: italic;
+  font-family: var(--serif);
+  color: var(--stone);
+  font-weight: 400;
+}
 .kami-landing .practice2-empty {
   flex: 1 1 auto;
   display: flex;
@@ -1241,12 +1258,20 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 40px;
+  justify-content: center;
+  min-height: 88px;
   padding: 24px 40px;
   background: var(--ivory);
   border-top: 1px solid var(--border-soft);
   border-bottom: 1px solid var(--border-soft);
-  overflow-x: auto;
+}
+.kami-landing .practice2-metrics-inner {
+  width: 50vw;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
 }
 .kami-landing .practice2-progress {
   position: absolute;
@@ -1346,14 +1371,17 @@
   transition: width 0.2s ease-out;
 }
 .kami-landing .practice2-webcam {
-  position: relative;
-  margin-left: auto;
-  width: 132px;
-  aspect-ratio: 4 / 3;
-  border-radius: 10px;
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 10;
+  width: 312px;
+  height: 312px;
+  border-radius: 50%;
   overflow: hidden;
   background: var(--shot-bg);
-  flex: 0 0 auto;
+  box-shadow: 0 4px 16px rgba(20, 19, 19, 0.18);
+  border: 2px solid var(--ivory);
 }
 .kami-landing .practice2-webcam video {
   width: 100%;
@@ -1461,6 +1489,21 @@
   outline: none;
   box-shadow: 0 0 0 1.5px var(--brand), 0 0 0 4px var(--brand-tint);
 }
+.kami-landing .practice2-finish {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--error);
+  background: var(--error-tint);
+  color: var(--error);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.kami-landing .practice2-finish:hover { background: var(--error); color: var(--ivory); transform: translateY(-1px); }
+.kami-landing .practice2-finish:focus-visible { outline: none; box-shadow: 0 0 0 1.5px var(--error); }
 .kami-landing .practice2-font-controls {
   display: flex;
   align-items: center;
@@ -1481,15 +1524,408 @@
 }
 .kami-landing .practice2-font-btn:hover { color: var(--brand); background: var(--warm-sand); }
 .kami-landing .practice2-font-btn:focus-visible { outline: none; box-shadow: 0 0 0 1.5px var(--brand); }
+/* A labelled on/off switch (mask, dark theme). The track + sliding thumb make
+   its toggle state unmistakable. `aria-checked` is the single source of truth. */
+.kami-landing .practice2-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--ivory);
+  color: var(--stone);
+  cursor: pointer;
+  font-family: var(--latin-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.kami-landing .practice2-switch:hover { background: var(--warm-sand); }
+.kami-landing .practice2-switch-label { line-height: 1; }
+.kami-landing .practice2-switch-track {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background 0.18s ease;
+  flex: 0 0 auto;
+}
+.kami-landing .practice2-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ivory);
+  box-shadow: 0 1px 2px rgba(20, 19, 19, 0.25);
+  transition: transform 0.18s ease;
+}
+.kami-landing .practice2-switch[aria-checked="true"] {
+  color: var(--brand);
+  border-color: var(--brand-light);
+}
+.kami-landing .practice2-switch[aria-checked="true"] .practice2-switch-track {
+  background: var(--brand);
+}
+.kami-landing .practice2-switch[aria-checked="true"] .practice2-switch-thumb {
+  transform: translateX(16px);
+}
+.kami-landing .practice2-switch:focus-visible { outline: none; box-shadow: 0 0 0 1.5px var(--brand); }
+
+/* Pre-roll: a translucent parchment mask (script faintly visible behind) with a
+   clock ring that sweeps down over each second while a 3-2-1 count plays. */
+.kami-landing .practice2-countdown {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(245, 244, 237, 0.6);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: practice2-veil-in 0.15s ease-out;
+}
+.kami-landing .practice2-countdown-clock {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(180px, 32vw, 340px);
+  height: clamp(180px, 32vw, 340px);
+}
+.kami-landing .practice2-countdown-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* start the sweep at 12 o'clock */
+}
+.kami-landing .practice2-countdown-track {
+  fill: none;
+  stroke: rgba(27, 54, 93, 0.15);
+  stroke-width: 3;
+}
+.kami-landing .practice2-countdown-sweep {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 4;
+  stroke-linecap: round;
+  /* r=46 → circumference ≈ 289 */
+  stroke-dasharray: 289;
+  animation: practice2-count-sweep 1s linear forwards;
+}
+.kami-landing .practice2-countdown-num {
+  position: relative;
+  z-index: 1;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(88px, 18vw, 190px);
+  line-height: 1;
+  color: var(--brand);
+  /* parchment halo keeps the numeral legible over the live script */
+  text-shadow: 0 0 24px var(--parchment), 0 0 12px var(--parchment);
+  animation: practice2-count-pop 0.5s ease-out;
+}
+@keyframes practice2-veil-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes practice2-count-sweep {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 289; }
+}
+@keyframes practice2-count-pop {
+  0% { opacity: 0; transform: scale(0.7); }
+  40% { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Dark theme for /practice2. Overriding the design tokens cascades to every
+   surface; a few hardcoded values (the countdown veil) are re-stated below. */
+.kami-landing.practice2-page.practice2-dark {
+  --parchment: #14161a;
+  --ivory: #1c1f26;
+  --warm-sand: #2a2e37;
+  --near-black: #f2f2ef;
+  --dark-warm: #d8d8d2;
+  --olive: #b8b8b0;
+  --stone: #9a9a93;
+  --brand: #7ea6d9;
+  --brand-light: #a9c5e8;
+  --brand-tint: rgba(126, 166, 217, 0.16);
+  --border: #2a2e37;
+  --border-soft: #262a32;
+  --line: #333842;
+  --error: #e5806f;
+  --error-tint: #3a2320;
+  color: var(--near-black);
+}
+.kami-landing.practice2-dark .practice2-countdown {
+  background: rgba(20, 22, 26, 0.6);
+}
 @media (max-width: 640px) {
   .kami-landing .practice2-title-badge { display: none; }
   .kami-landing .practice2-teleprompter-inner { padding: 30vh 24px; gap: 22px; }
-  .kami-landing .practice2-metrics { gap: 24px; padding: 16px 20px; }
+  .kami-landing .practice2-metrics { padding: 16px 20px; overflow-x: auto; justify-content: flex-start; }
+  .kami-landing .practice2-metrics-inner { width: 100%; gap: 24px; justify-content: flex-start; }
   .kami-landing .practice2-metric-value { font-size: 24px; }
   .kami-landing .practice2-metric-value.mono { font-size: 22px; }
   .kami-landing .practice2-fillers { display: none; }
-  .kami-landing .practice2-webcam { width: 84px; }
+  .kami-landing .practice2-webcam { top: 16px; right: 16px; width: 216px; height: 216px; }
   .kami-landing .practice2-controls { padding: 14px 16px; gap: 10px; }
   .kami-landing .practice2-exit span { display: none; }
   .kami-landing .practice2-transport { gap: 12px; }
+}
+
+/* ========== Report2 (session report, landing-style) ========== */
+.kami-landing.report2-page { min-height: 100vh; }
+.kami-landing .report2 .hero h1 { font-size: 56px; }
+.kami-landing .report2 .hero { margin-bottom: 64px; }
+.kami-landing .report2 .hero-cta .btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.kami-landing .report2 .hero-cta .btn-ghost:disabled:hover {
+  background: transparent;
+  transform: none;
+}
+
+/* Overall score */
+.kami-landing .report2-score {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+.kami-landing .report2-ring-inner {
+  position: relative;
+  width: 176px;
+  height: 176px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.kami-landing .report2-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.kami-landing .report2-ring-track { stroke: var(--warm-sand); }
+.kami-landing .report2-ring-value {
+  stroke: var(--brand);
+  transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.kami-landing .report2-ring-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.kami-landing .report2-ring-score {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 52px;
+  line-height: 1;
+  color: var(--near-black);
+  font-variant-numeric: tabular-nums;
+}
+.kami-landing .report2-ring-grade {
+  margin-top: 6px;
+  font-family: var(--latin-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+.kami-landing .report2-score-body { flex: 1 1 320px; }
+.kami-landing .report2-score-lede {
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--dark-warm);
+  margin: 0;
+}
+.kami-landing .report2-score-note {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--stone);
+  margin: 12px 0 0;
+}
+
+/* Pace flow */
+.kami-landing .report2-pace-flow {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 2;
+  color: var(--near-black);
+  background: var(--ivory);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 20px 22px;
+}
+.kami-landing .report2-sentence { padding: 2px 4px; border-radius: 4px; }
+.kami-landing .report2-sentence.is-optimal { background: var(--brand-tint); }
+.kami-landing .report2-sentence.is-slow { background: #f0e6d2; }
+.kami-landing .report2-sentence.is-fast { background: var(--error-tint); }
+.kami-landing .report2-sentence.is-unknown { background: transparent; }
+.kami-landing .report2-pace-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 16px;
+  background: var(--warm-sand);
+}
+.kami-landing .report2-pace-seg { flex: 1 1 0; height: 100%; }
+.kami-landing .report2-pace-seg.is-optimal { background: var(--brand); }
+.kami-landing .report2-pace-seg.is-slow { background: #c69a4a; }
+.kami-landing .report2-pace-seg.is-fast { background: var(--error); }
+.kami-landing .report2-pace-seg.is-unknown { background: var(--line); }
+.kami-landing .report2-legend { display: flex; gap: 20px; margin-top: 16px; }
+.kami-landing .report2-legend-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--latin-ui);
+  font-size: 12px;
+  color: var(--stone);
+}
+.kami-landing .report2-legend-swatch { width: 10px; height: 10px; border-radius: 50%; }
+.kami-landing .report2-legend-swatch.is-optimal { background: var(--brand); }
+.kami-landing .report2-legend-swatch.is-slow { background: #c69a4a; }
+.kami-landing .report2-legend-swatch.is-fast { background: var(--error); }
+
+/* Filler words */
+.kami-landing .report2-filler-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kami-landing .report2-filler-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  background: var(--ivory);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.kami-landing .report2-filler-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--serif);
+  font-size: 16px;
+  color: var(--near-black);
+}
+.kami-landing .report2-filler-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--error); }
+.kami-landing .report2-filler-count { font-family: var(--latin-ui); font-size: 12px; color: var(--stone); }
+.kami-landing .report2-filler-times {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--stone);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.kami-landing .report2-note {
+  font-family: var(--serif);
+  font-size: 16px;
+  color: var(--olive);
+  margin: 0;
+}
+
+/* Coaching aside */
+.kami-landing .report2-coach {
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--ivory);
+  padding: 32px;
+  text-align: center;
+}
+.kami-landing .report2-coach-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--dark-warm);
+  margin: 0;
+}
+.kami-landing .report2-coach-body {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--stone);
+  margin: 10px auto 0;
+  max-width: 420px;
+}
+
+/* Recording download */
+.kami-landing .report2-recording {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: var(--ivory);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 72px;
+}
+.kami-landing .report2-recording-meta { display: flex; flex-direction: column; gap: 3px; }
+.kami-landing .report2-recording-title { font-family: var(--serif); font-size: 16px; color: var(--near-black); }
+.kami-landing .report2-recording-size { font-family: var(--latin-ui); font-size: 12px; color: var(--stone); }
+.kami-landing .report2-recording .btn-primary { min-width: auto; padding: 11px 22px; font-size: 14px; }
+
+/* Footer */
+.kami-landing .report2-foot {
+  border-top: 1px solid var(--border-soft);
+  padding-top: 28px;
+  padding-bottom: 16px;
+  text-align: center;
+}
+.kami-landing .report2-foot a {
+  font-family: var(--latin-ui);
+  font-size: 13px;
+  color: var(--stone);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.kami-landing .report2-foot a:hover { color: var(--dark-warm); }
+
+/* Empty state */
+.kami-landing .report2-empty-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+.kami-landing .report2-empty {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.kami-landing .report2-empty-title { font-family: var(--serif); font-size: 24px; color: var(--near-black); margin: 0; }
+.kami-landing .report2-empty-body {
+  font-family: var(--serif);
+  font-size: 16px;
+  color: var(--olive);
+  margin: 0 0 12px;
+  max-width: 360px;
+}
+
+@media (max-width: 640px) {
+  .kami-landing .report2 .hero h1 { font-size: 40px; }
+  .kami-landing .report2-score { gap: 24px; }
+  .kami-landing .report2-filler-item { flex-direction: column; gap: 4px; }
+  .kami-landing .report2-filler-times { text-align: left; }
 }

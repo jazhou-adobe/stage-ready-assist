@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Pause, Play, RotateCcw, RotateCw } from "lucide-react";
+import { ArrowLeft, Eye, Moon, Pause, Play, RotateCcw, RotateCw, Square } from "lucide-react";
 
 import "../landing.css";
 import { useAudioMetrics } from "@/hooks/useAudioMetrics";
@@ -19,7 +19,12 @@ import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useWebcam, type UseWebcamResult } from "@/hooks/useWebcam";
 import { useAppStore } from "@/lib/store";
 import { setRecordingBlob } from "@/lib/recordingBlobStore";
-import { computeScore, gradeFromScore, summaryLine } from "@/lib/grading";
+import {
+  computeCompleteness,
+  computeScore,
+  gradeFromScore,
+  summaryLine,
+} from "@/lib/grading";
 import { formatElapsed, computeAvgWpm, sumValues } from "@/lib/metrics";
 import { splitSentences } from "@/lib/script";
 import type { MetricsSample, SessionResult, SessionSummary } from "@/lib/types";
@@ -40,6 +45,17 @@ const TREND_WINDOW = 6; // samples per averaging window for the pace trend + spa
 const BASE_FONT_SCALE = 1.6;
 const CURRENT_FONT_SCALE = 2;
 
+// Replaces every non-whitespace glyph with a dot so the presenter can rehearse
+// from memory while keeping the shape/rhythm of each line. Whitespace is kept
+// so word boundaries still read.
+const renderMasked = (text: string): string => {
+  let out = "";
+  for (const ch of text) {
+    out += /\s/.test(ch) ? ch : "·";
+  }
+  return out;
+};
+
 export default function Practice2Page() {
   const router = useRouter();
 
@@ -48,6 +64,8 @@ export default function Practice2Page() {
   const scriptFontSize = useAppStore((s) => s.scriptFontSize);
   const increaseFont = useAppStore((s) => s.increaseFont);
   const decreaseFont = useAppStore((s) => s.decreaseFont);
+  const theme = useAppStore((s) => s.theme);
+  const toggleTheme = useAppStore((s) => s.toggleTheme);
   const recentScripts = useAppStore((s) => s.recentScripts);
   const setResult = useAppStore((s) => s.setResult);
   const saveScriptSession = useAppStore((s) => s.saveScriptSession);
@@ -70,6 +88,9 @@ export default function Practice2Page() {
   const scriptWords = useMemo(() => {
     const words: Array<{ word: string; sentenceIndex: number }> = [];
     sentences.forEach((s, si) => {
+      // `{{ ... }}` cues carry no spoken words — excluding them keeps the flat
+      // index aligned with cumulativeWords for skip-detection.
+      if (s.isHint) return;
       s.text
         .split(/\s+/)
         .filter(Boolean)
@@ -84,6 +105,19 @@ export default function Practice2Page() {
   }, [sentences]);
 
   const [recordState, setRecordState] = useState<RecordState>("idle");
+
+  // Mask hides the script text (dots) so the presenter can rehearse from memory.
+  const [masked, setMasked] = useState(false);
+  // Idle scroll selects a start sentence; null means "start from the top".
+  const [manualStartIndex, setManualStartIndex] = useState<number | null>(null);
+  // 3-2-1 pre-roll shown when a take begins; null while not counting.
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Read inside the once-attached idle scroll handler to avoid a stale closure.
+  const recordStateRef = useRef<RecordState>("idle");
+  useEffect(() => {
+    recordStateRef.current = recordState;
+  }, [recordState]);
 
   const [wordCountOffset, setWordCountOffset] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -113,6 +147,42 @@ export default function Practice2Page() {
     sentenceRefs.current = sentenceRefs.current.slice(0, sentences.length);
   }, [sentences.length]);
 
+  // While idle, scrolling the teleprompter picks the sentence nearest the
+  // center line as the start point. Mirrors /practice's manual start behavior.
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    let tid: number | undefined;
+    const handler = () => {
+      if (recordStateRef.current !== "idle") return;
+      clearTimeout(tid);
+      tid = window.setTimeout(() => {
+        const rect = container.getBoundingClientRect();
+        const mid = rect.top + rect.height / 2;
+        let closest = 0;
+        let closestDist = Infinity;
+        sentenceRefs.current.forEach((el, i) => {
+          if (!el) return;
+          if (sentencesRef.current[i]?.isHint) return; // don't start on a cue
+          const r = el.getBoundingClientRect();
+          const dist = Math.abs(r.top + r.height / 2 - mid);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closest = i;
+          }
+        });
+        setManualStartIndex(closest);
+      }, 80);
+    };
+
+    container.addEventListener("scroll", handler, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", handler);
+      clearTimeout(tid);
+    };
+  }, [sentences.length]);
+
   // Recover script from most recent entry after store rehydrates (refresh, or a
   // direct visit to /practice2 without going through /start first).
   useEffect(() => {
@@ -121,6 +191,23 @@ export default function Practice2Page() {
     setScriptTitle(latest.title);
     setScript(latest.text);
   }, [recentScripts, script, setScript, setScriptTitle]);
+
+  // Open the webcam preview as soon as the page loads (idempotent — startAll
+  // reuses the same stream).
+  useEffect(() => {
+    webcam.start();
+  }, [webcam]);
+
+  // Open the mic and start listening for the "start recording" voice command
+  // while idle. Guarded so it runs once (when support resolves). speech.start()
+  // resets counters, so the real session startAll kicks off begins clean
+  // regardless of anything said beforehand.
+  const listeningStartedRef = useRef(false);
+  useEffect(() => {
+    if (listeningStartedRef.current || !speech.supported) return;
+    listeningStartedRef.current = true;
+    speech.start();
+  }, [speech]);
 
   useEffect(() => {
     const merged = mergedSamplesRef.current;
@@ -166,17 +253,26 @@ export default function Practice2Page() {
   }, [recordState]);
 
   const startAll = useCallback(async () => {
+    // A manual start (chosen by scrolling while idle) shifts the word-count
+    // baseline so tracking begins from that sentence.
+    if (manualStartIndex !== null && manualStartIndex > 0) {
+      setWordCountOffset(sentences[manualStartIndex - 1]?.cumulativeWords ?? 0);
+    } else {
+      setWordCountOffset(0);
+    }
+    setManualStartIndex(null);
+
     prevTranscriptLenRef.current = 0;
     await audio.start();
     speech.start();
     await webcam.start();
-    recording.startRecording(webcam.stream, audio.getStream());
+    recording.startRecording(audio.getStream());
     startedAtRef.current = performance.now();
     pausedAccumRef.current = 0;
     pausedAtRef.current = null;
     setElapsedSec(0);
     setRecordState("recording");
-  }, [audio, speech, webcam, recording]);
+  }, [audio, speech, webcam, recording, manualStartIndex, sentences]);
 
   useEffect(() => {
     wordCountOffsetRef.current = wordCountOffset;
@@ -203,6 +299,13 @@ export default function Practice2Page() {
     while (i < sentences.length && sentences[i].cumulativeWords <= spoken) i++;
     return Math.min(i, sentences.length - 1);
   }, [sentences, speech.spokenWordCount, speech.interim, wordCountOffset]);
+  // While idle, the highlight follows the manual scroll selection (or the top),
+  // never the mic — the idle listener would otherwise drag the teleprompter as
+  // it hears the "start recording" command.
+  const displayedCurrentIndex =
+    recordState === "idle"
+      ? manualStartIndex ?? 0
+      : currentSentenceIndex;
 
   useEffect(() => {
     curSentIdxRef.current = currentSentenceIndex;
@@ -276,10 +379,13 @@ export default function Practice2Page() {
   }, [speech.transcript, recordState]);
 
   useEffect(() => {
-    const el = sentenceRefs.current[currentSentenceIndex];
+    // While idle with a manual start, the scroll handler already positions the
+    // view — don't fight the user by snapping back.
+    if (recordState === "idle" && manualStartIndex !== null) return;
+    const el = sentenceRefs.current[displayedCurrentIndex];
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [currentSentenceIndex, scriptFontSize]);
+  }, [displayedCurrentIndex, scriptFontSize, recordState, manualStartIndex]);
 
   const onPause = useCallback(() => {
     audio.pause();
@@ -299,11 +405,59 @@ export default function Practice2Page() {
     setRecordState("recording");
   }, [audio, speech]);
 
+  // Starting a fresh take runs a 3-2-1 pre-roll that masks the screen; pause and
+  // resume are immediate. Driven by chained timeouts (not a countdown-keyed
+  // effect) so state updates happen in async callbacks, never synchronously in
+  // an effect body.
+  const countdownTimerRef = useRef<number | undefined>(undefined);
+  const beginCountdown = useCallback(() => {
+    if (countdown !== null) return;
+    let n = 3;
+    setCountdown(n);
+    const tick = () => {
+      n -= 1;
+      if (n <= 0) {
+        setCountdown(null);
+        startAll();
+        return;
+      }
+      setCountdown(n);
+      countdownTimerRef.current = window.setTimeout(tick, 1000);
+    };
+    countdownTimerRef.current = window.setTimeout(tick, 1000);
+  }, [countdown, startAll]);
+
+  useEffect(() => () => clearTimeout(countdownTimerRef.current), []);
+
+  // Voice trigger: saying "start recording" while idle begins the pre-roll,
+  // exactly like pressing play. One-shot via `voiceArmedRef`.
+  //
+  // `beginCountdown` is re-created on every render (it closes over `startAll`,
+  // which depends on the audio/speech/webcam hook objects), so this effect
+  // re-runs constantly. The scheduled start is therefore tracked in a ref and
+  // cleared only on unmount — a per-run cleanup would cancel the pending
+  // countdown on the very next re-render (which fires while STT keeps emitting
+  // interim results), so the command would silently never start recording.
+  const voiceArmedRef = useRef(true);
+  const voiceTimerRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (recordState !== "idle" || countdown !== null || !voiceArmedRef.current)
+      return;
+    const heard = `${speech.transcript} ${speech.interim}`.toLowerCase();
+    if (!/\bstart\s+recording\b/.test(heard)) return;
+    voiceArmedRef.current = false;
+    // Defer out of the effect body so the state update happens in a callback.
+    voiceTimerRef.current = window.setTimeout(beginCountdown, 0);
+  }, [speech.transcript, speech.interim, recordState, countdown, beginCountdown]);
+  useEffect(() => () => clearTimeout(voiceTimerRef.current), []);
+
   const togglePauseResume = useCallback(() => {
     if (recordState === "recording") onPause();
     else if (recordState === "paused") onResume();
-    else startAll();
-  }, [recordState, onPause, onResume, startAll]);
+    else beginCountdown();
+  }, [recordState, onPause, onResume, beginCountdown]);
+
+  const toggleMask = useCallback(() => setMasked((m) => !m), []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -358,9 +512,21 @@ export default function Practice2Page() {
       ? finalSamples.reduce((sum, s) => sum + s.volume, 0) / finalSamples.length
       : 0;
     const avgWpm = computeAvgWpm(finalTranscript, durationSec);
-    const score = computeScore({ avgWpm, fillerCount, longPauseCount });
+    const completeness = computeCompleteness(script, finalTranscript);
+    const score = computeScore({
+      avgWpm,
+      fillerCount,
+      longPauseCount,
+      completeness,
+    });
     const grade = gradeFromScore(score);
-    const sumLine = summaryLine({ avgWpm, fillerCount, longPauseCount, score });
+    const sumLine = summaryLine({
+      avgWpm,
+      fillerCount,
+      longPauseCount,
+      completeness,
+      score,
+    });
 
     const currentRecent = useAppStore.getState().recentScripts;
     const scriptId =
@@ -396,7 +562,7 @@ export default function Practice2Page() {
       saveScriptSession(scriptId, summary);
     }
 
-    router.push("/report");
+    router.push("/report2");
   }, [
     audio,
     speech,
@@ -495,19 +661,44 @@ export default function Practice2Page() {
 
   const canSkip = recordState !== "idle" && sentences.length > 0;
 
-  // Progress through the script — same "spoken" quantity that drives the
-  // teleprompter position, expressed as a fraction of the whole script.
+  // Progress through the script. While recording it follows the spoken word
+  // count; while idle it follows the scrolled start selection so the bar
+  // refreshes as the presenter scrolls to choose where to begin.
   const scriptProgress = useMemo(() => {
     if (totalWords === 0) return 0;
+    if (recordState === "idle") {
+      const idx = manualStartIndex ?? 0;
+      const words = idx > 0 ? sentences[idx - 1]?.cumulativeWords ?? 0 : 0;
+      return Math.max(0, Math.min(1, words / totalWords));
+    }
     const interimWords = speech.interim
       ? speech.interim.trim().split(/\s+/).filter(Boolean).length
       : 0;
     const spoken = speech.spokenWordCount + interimWords + wordCountOffset;
     return Math.max(0, Math.min(1, spoken / totalWords));
-  }, [totalWords, speech.spokenWordCount, speech.interim, wordCountOffset]);
+  }, [totalWords, recordState, manualStartIndex, sentences, speech.spokenWordCount, speech.interim, wordCountOffset]);
 
   return (
-    <div className="kami-landing practice2-page">
+    <div className={`kami-landing practice2-page${theme === "dark" ? " practice2-dark" : ""}`}>
+      <Practice2Webcam webcam={webcam} recording={recordState === "recording"} />
+
+      {countdown !== null && countdown > 0 && (
+        <div
+          className="practice2-countdown"
+          role="status"
+          aria-live="assertive"
+          aria-label={`Recording starts in ${countdown}`}
+        >
+          <div key={countdown} className="practice2-countdown-clock">
+            <svg className="practice2-countdown-ring" viewBox="0 0 100 100" aria-hidden="true">
+              <circle className="practice2-countdown-track" cx="50" cy="50" r="46" />
+              <circle className="practice2-countdown-sweep" cx="50" cy="50" r="46" />
+            </svg>
+            <span className="practice2-countdown-num">{countdown}</span>
+          </div>
+        </div>
+      )}
+
       {sentences.length === 0 ? (
         <div className="practice2-empty">
           <p className="practice2-empty-title">No script loaded.</p>
@@ -521,28 +712,41 @@ export default function Practice2Page() {
           <div className="practice2-guide" aria-hidden="true" />
           <div className="practice2-teleprompter-inner">
             {sentences.map((sentence, i) => {
-              const distance = Math.abs(i - currentSentenceIndex);
-              const isCurrent = i === currentSentenceIndex;
-              const opacity = isCurrent
-                ? 1
-                : Math.max(
-                    FADE_FLOOR,
-                    1 - distance * FADE_PER_STEP - (distance > FADE_DISTANT_AFTER ? FADE_DISTANT_PENALTY : 0),
-                  );
+              const isHint = sentence.isHint;
+              const distance = Math.abs(i - displayedCurrentIndex);
+              const isCurrent = i === displayedCurrentIndex && !isHint;
+              const showMasked = masked && !isHint;
+              const opacity = isHint
+                ? 0.5
+                : isCurrent
+                  ? 1
+                  : Math.max(
+                      FADE_FLOOR,
+                      1 - distance * FADE_PER_STEP - (distance > FADE_DISTANT_AFTER ? FADE_DISTANT_PENALTY : 0),
+                    );
               const style: CSSProperties = {
                 fontSize: `calc(${sentenceFontPx} * ${isCurrent ? CURRENT_FONT_SCALE : BASE_FONT_SCALE})`,
                 opacity,
               };
+              const className = [
+                "practice2-sentence",
+                isCurrent && "is-current",
+                isHint && "is-hint",
+                showMasked && "is-masked",
+              ]
+                .filter(Boolean)
+                .join(" ");
               return (
                 <p
                   key={i}
                   ref={(el) => {
                     sentenceRefs.current[i] = el;
                   }}
-                  className={isCurrent ? "practice2-sentence is-current" : "practice2-sentence"}
+                  className={className}
                   style={style}
+                  onClick={toggleMask}
                 >
-                  {sentence.text}
+                  {showMasked ? renderMasked(sentence.text) : sentence.text}
                 </p>
               );
             })}
@@ -568,6 +772,7 @@ export default function Practice2Page() {
         >
           <div className="practice2-progress-fill" style={{ width: `${scriptProgress * 100}%` }} />
         </div>
+        <div className="practice2-metrics-inner">
         <div className="practice2-metric">
           <p className="practice2-metric-label">Elapsed</p>
           <p className="practice2-metric-value mono">{formatElapsed(elapsedSec)}</p>
@@ -613,8 +818,7 @@ export default function Practice2Page() {
             </div>
           )}
         </div>
-
-        <Practice2Webcam webcam={webcam} recording={recordState === "recording"} />
+        </div>
       </div>
 
       <div className="practice2-controls">
@@ -656,9 +860,48 @@ export default function Practice2Page() {
             <RotateCw className="h-4 w-4" />
             <span>{SKIP_SECONDS}</span>
           </button>
+          {recordState !== "idle" && (
+            <button
+              type="button"
+              className="practice2-finish"
+              onClick={finishAndReport}
+              aria-label="Finish recording"
+              title="Finish recording"
+            >
+              <Square className="h-4 w-4" fill="currentColor" />
+            </button>
+          )}
         </div>
 
         <div className="practice2-font-controls">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={masked}
+            className="practice2-switch"
+            onClick={toggleMask}
+            title={masked ? "Reveal script" : "Mask script"}
+          >
+            <Eye className="h-4 w-4" />
+            <span className="practice2-switch-label">Mask</span>
+            <span className="practice2-switch-track" aria-hidden="true">
+              <span className="practice2-switch-thumb" />
+            </span>
+          </button>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={theme === "dark"}
+            className="practice2-switch"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          >
+            <Moon className="h-4 w-4" />
+            <span className="practice2-switch-label">Dark</span>
+            <span className="practice2-switch-track" aria-hidden="true">
+              <span className="practice2-switch-thumb" />
+            </span>
+          </button>
           <button
             type="button"
             className="practice2-font-btn"

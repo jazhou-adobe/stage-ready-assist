@@ -328,7 +328,7 @@ export default function StartPage() {
             <button
               type="button"
               className="btn-primary"
-              onClick={() => startPractice("/practice")}
+              onClick={() => startPractice("/practice2")}
               disabled={!canStart}
             >
               <FileUp className="h-4 w-4" />
@@ -339,10 +339,10 @@ export default function StartPage() {
             <button
               type="button"
               className="link-button"
-              onClick={() => startPractice("/practice2")}
+              onClick={() => startPractice("/practice")}
               disabled={!canStart}
             >
-              Or try the redesigned practice view →
+              Or try the classic practice view →
             </button>
           </p>
         </div>

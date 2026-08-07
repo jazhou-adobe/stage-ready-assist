@@ -107,7 +107,11 @@ const countWordsIn = (text: string): number => {
 const getRecognitionCtor = (): SpeechRecognitionConstructor | null => {
   if (typeof window === "undefined") return null;
   const w = window as SpeechRecognitionWindow;
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+  // Prefer the prefixed constructor: Chrome/Safari (this app's supported
+  // targets) ship the *working* engine as `webkitSpeechRecognition`. Some
+  // Chromium builds also expose an unprefixed `SpeechRecognition` that is a
+  // non-functional stub (produces no results), so it must be the fallback.
+  return w.webkitSpeechRecognition ?? w.SpeechRecognition ?? null;
 };
 
 const subscribeSupported = () => () => {};
