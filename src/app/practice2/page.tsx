@@ -134,6 +134,7 @@ export default function Practice2Page() {
   const stoppingRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const sentenceRefs = useRef<Array<HTMLParagraphElement | null>>([]);
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Refs read inside the skip-detection effect to avoid stale closures.
   const wordCountOffsetRef = useRef(0);
@@ -621,6 +622,26 @@ export default function Practice2Page() {
   const wpmDisplay = Math.round(speech.wpm).toString();
   const pausesDisplay = audio.pauses.length.toString();
 
+  const totalWordsSpoken = useMemo(() => {
+    const interimWords = speech.interim
+      ? speech.interim.trim().split(/\s+/).filter(Boolean).length
+      : 0;
+    return speech.spokenWordCount + interimWords;
+  }, [speech.spokenWordCount, speech.interim]);
+
+  const liveTranscriptText = useMemo(
+    () => [speech.transcript, speech.interim].filter(Boolean).join(" ").trim(),
+    [speech.transcript, speech.interim],
+  );
+
+  // Auto-scroll the transcript strip to the newest words as they arrive —
+  // the fixed 3-line height + smooth scroll gives the "ticking up" effect.
+  useEffect(() => {
+    const el = transcriptScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [liveTranscriptText]);
+
   const latestVolumePct = useMemo(() => {
     if (mergedSamples.length === 0) return 0;
     const latest = mergedSamples[mergedSamples.length - 1];
@@ -725,7 +746,7 @@ export default function Practice2Page() {
                       1 - distance * FADE_PER_STEP - (distance > FADE_DISTANT_AFTER ? FADE_DISTANT_PENALTY : 0),
                     );
               const style: CSSProperties = {
-                fontSize: `calc(${sentenceFontPx} * ${isCurrent ? CURRENT_FONT_SCALE : BASE_FONT_SCALE})`,
+                fontSize: `calc(${sentenceFontPx} * ${isCurrent ? CURRENT_FONT_SCALE : BASE_FONT_SCALE} * var(--font-mobile-scale, 1))`,
                 opacity,
               };
               const className = [
@@ -772,6 +793,16 @@ export default function Practice2Page() {
         >
           <div className="practice2-progress-fill" style={{ width: `${scriptProgress * 100}%` }} />
         </div>
+        <div
+          ref={transcriptScrollRef}
+          className="practice2-transcript"
+          aria-live="polite"
+          aria-label="Live transcript"
+        >
+          <p className="practice2-transcript-text">
+            {liveTranscriptText || "Start speaking to see your words appear here…"}
+          </p>
+        </div>
         <div className="practice2-metrics-inner">
         <div className="practice2-metric">
           <p className="practice2-metric-label">Elapsed</p>
@@ -785,6 +816,11 @@ export default function Practice2Page() {
           <p className="practice2-metric-label">Pace (WPM)</p>
           <p className="practice2-metric-value">{wpmDisplay}</p>
           <p className="practice2-metric-caption">{paceTrend}</p>
+        </div>
+
+        <div className="practice2-metric">
+          <p className="practice2-metric-label">Total Words</p>
+          <p className="practice2-metric-value">{totalWordsSpoken}</p>
         </div>
 
         <div className="practice2-metric">

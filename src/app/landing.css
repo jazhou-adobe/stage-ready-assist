@@ -1058,6 +1058,97 @@
   box-shadow: 0 0 0 1.5px var(--brand);
 }
 
+.kami-landing .reports-section .section-head { margin-bottom: 20px; }
+.kami-landing .reports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+.kami-landing .report-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  background: var(--ivory);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.kami-landing .report-card:hover {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+  border-color: var(--border-soft);
+}
+.kami-landing .report-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1.5px var(--brand);
+}
+.kami-landing .report-card .title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--near-black);
+  margin: 0 0 4px;
+  padding-right: 52px;
+}
+.kami-landing .report-card .meta {
+  font-family: var(--latin-ui);
+  font-size: 12px;
+  color: var(--stone);
+  margin: 0;
+}
+.kami-landing .report-card .preview {
+  font-family: var(--serif);
+  font-size: 13.5px;
+  color: var(--olive);
+  line-height: 1.5;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.kami-landing .report-card .stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.kami-landing .report-card .stats .label {
+  font-family: var(--latin-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--stone);
+  margin: 0 0 2px;
+}
+.kami-landing .report-card .stats .value {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--near-black);
+  margin: 0;
+}
+.kami-landing .report-card .grade {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-family: var(--latin-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--brand-tint);
+  color: var(--brand);
+}
+
 .kami-landing .quickstart-section .section-head { margin-bottom: 20px; }
 .kami-landing .quickstart-grid {
   display: grid;
@@ -1136,6 +1227,7 @@
   .kami-landing .app-shell { padding: 40px 20px 72px; }
   .kami-landing .overview-card { padding: 28px 22px; }
   .kami-landing .history-grid { grid-template-columns: 1fr; }
+  .kami-landing .reports-grid { grid-template-columns: 1fr; }
   .kami-landing .quickstart-grid { grid-template-columns: 1fr; }
   .kami-landing .overview-actions { flex-direction: column-reverse; gap: 10px; }
 }
@@ -1143,7 +1235,14 @@
 /* ========== Practice2 (teleprompter redesign) ========== */
 .kami-landing.practice2-page {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Explicit dvh (not inset:0's implicit bottom) so the box tracks the real
+   * visible viewport on mobile Safari as its chrome shows/hides — inset:0 on
+   * a fixed element resolves against the large viewport and lets the bottom
+   * control bar get clipped behind the browser's own bottom bar. */
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--parchment);
@@ -1257,13 +1356,33 @@
   position: relative;
   flex: 0 0 auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   min-height: 88px;
-  padding: 24px 40px;
+  padding: 16px 40px 22px;
   background: var(--ivory);
   border-top: 1px solid var(--border-soft);
   border-bottom: 1px solid var(--border-soft);
+}
+.kami-landing .practice2-transcript {
+  width: 50vw;
+  margin: 0 auto;
+  height: 54px;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 22px);
+  mask-image: linear-gradient(to bottom, transparent, black 22px);
+}
+.kami-landing .practice2-transcript-text {
+  margin: 0;
+  font-family: var(--latin-ui);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--stone);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .kami-landing .practice2-metrics-inner {
   width: 50vw;
@@ -1416,7 +1535,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 40px;
+  padding: 18px 40px calc(18px + env(safe-area-inset-bottom));
   background: var(--parchment);
 }
 .kami-landing .practice2-exit {
@@ -1672,13 +1791,14 @@
 @media (max-width: 640px) {
   .kami-landing .practice2-title-badge { display: none; }
   .kami-landing .practice2-teleprompter-inner { padding: 30vh 24px; gap: 22px; }
-  .kami-landing .practice2-metrics { padding: 16px 20px; overflow-x: auto; justify-content: flex-start; }
-  .kami-landing .practice2-metrics-inner { width: 100%; gap: 24px; justify-content: flex-start; }
+  .kami-landing .practice2-metrics { padding: 16px 20px; }
+  .kami-landing .practice2-transcript { width: 100%; }
+  .kami-landing .practice2-metrics-inner { width: 100%; gap: 24px; justify-content: flex-start; overflow-x: auto; }
   .kami-landing .practice2-metric-value { font-size: 24px; }
   .kami-landing .practice2-metric-value.mono { font-size: 22px; }
   .kami-landing .practice2-fillers { display: none; }
-  .kami-landing .practice2-webcam { top: 16px; right: 16px; width: 216px; height: 216px; }
-  .kami-landing .practice2-controls { padding: 14px 16px; gap: 10px; }
+  .kami-landing .practice2-webcam { top: 16px; right: 16px; width: 108px; height: 108px; }
+  .kami-landing .practice2-controls { padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); gap: 10px; }
   .kami-landing .practice2-exit span { display: none; }
   .kami-landing .practice2-transport { gap: 12px; }
 }
@@ -1708,6 +1828,45 @@
   background: transparent;
   transform: none;
 }
+
+
+/* AI coaching callout */
+.kami-landing .report2-ai-callout {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 28px;
+  background: var(--brand-tint);
+  border: 1px solid var(--brand);
+  border-radius: 12px;
+}
+.kami-landing .report2-ai-callout-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ivory);
+  color: var(--brand);
+}
+.kami-landing .report2-ai-callout-body { flex: 1 1 auto; min-width: 0; }
+.kami-landing .report2-ai-callout-body h2 {
+  margin: 0 0 4px;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 19px;
+  color: var(--near-black);
+}
+.kami-landing .report2-ai-callout-body p {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--olive);
+}
+.kami-landing .report2-ai-callout-btn { flex: 0 0 auto; white-space: nowrap; }
 
 /* Overall score */
 .kami-landing .report2-score {
@@ -1772,20 +1931,55 @@
 
 /* Pace flow */
 .kami-landing .report2-pace-flow {
-  font-family: var(--serif);
-  font-size: 17px;
-  line-height: 2;
-  color: var(--near-black);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   background: var(--ivory);
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   padding: 20px 22px;
 }
-.kami-landing .report2-sentence { padding: 2px 4px; border-radius: 4px; }
+.kami-landing .report2-pace-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kami-landing .report2-pace-row.is-collapsed .report2-sentence { opacity: 0.55; }
+.kami-landing .report2-pace-toggle { margin-top: -6px; }
+.kami-landing .report2-sentence {
+  align-self: flex-start;
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--near-black);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
 .kami-landing .report2-sentence.is-optimal { background: var(--brand-tint); }
 .kami-landing .report2-sentence.is-slow { background: #f0e6d2; }
 .kami-landing .report2-sentence.is-fast { background: var(--error-tint); }
 .kami-landing .report2-sentence.is-unknown { background: transparent; }
+.kami-landing .report2-pace-hint {
+  margin: 0 0 12px;
+  font-family: var(--latin-ui);
+  font-size: 12.5px;
+  color: var(--stone);
+}
+.kami-landing .report2-spoken {
+  padding-left: 10px;
+  border-left: 2px solid var(--border-soft);
+}
+.kami-landing .report2-spoken-text {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--olive);
+}
+.kami-landing .report2-spoken-text.is-empty {
+  font-style: normal;
+  color: var(--stone);
+}
 .kami-landing .report2-pace-bar {
   display: flex;
   height: 10px;
@@ -1856,30 +2050,6 @@
   margin: 0;
 }
 
-/* Coaching aside */
-.kami-landing .report2-coach {
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-  background: var(--ivory);
-  padding: 32px;
-  text-align: center;
-}
-.kami-landing .report2-coach-title {
-  font-family: var(--serif);
-  font-weight: 500;
-  font-size: 18px;
-  color: var(--dark-warm);
-  margin: 0;
-}
-.kami-landing .report2-coach-body {
-  font-family: var(--serif);
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--stone);
-  margin: 10px auto 0;
-  max-width: 420px;
-}
-
 /* Recording download */
 .kami-landing .report2-recording {
   display: flex;
@@ -1939,6 +2109,21 @@
 @media (max-width: 640px) {
   .kami-landing .report2 .hero h1 { font-size: 40px; }
   .kami-landing .report2-score { gap: 24px; }
+  .kami-landing .report2-ai-callout { flex-direction: column; align-items: flex-start; }
+  .kami-landing .report2-ai-callout-btn { width: 100%; justify-content: center; }
   .kami-landing .report2-filler-item { flex-direction: column; gap: 4px; }
   .kami-landing .report2-filler-times { text-align: left; }
+}
+
+/* Report2 — Save Report prints via window.print(); only the report content
+   itself (no nav, CTAs, or toggles) should appear in the saved PDF. */
+@media print {
+  .kami-landing.report2-page .hero-links,
+  .kami-landing.report2-page .hero-cta,
+  .kami-landing.report2-page .report2-ai-callout,
+  .kami-landing.report2-page .report2-pace-toggle,
+  .kami-landing.report2-page .report2-foot { display: none; }
+  .kami-landing.report2-page { background: #f5f4ed; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .kami-landing.report2-page .page { padding: 24px 0; max-width: 100%; }
+  .kami-landing.report2-page section { break-inside: avoid; page-break-inside: avoid; }
 }

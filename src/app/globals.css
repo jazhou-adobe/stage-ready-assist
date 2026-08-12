@@ -5,6 +5,19 @@
   --foreground: #171717;
 }
 
+/* Halves script/teleprompter font sizes on phone-width viewports. Consumed
+ * via calc(<base-size> * var(--font-mobile-scale)) wherever script text is
+ * rendered (practice + practice2); desktop is unaffected. */
+:root {
+  --font-mobile-scale: 1;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --font-mobile-scale: 0.5;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

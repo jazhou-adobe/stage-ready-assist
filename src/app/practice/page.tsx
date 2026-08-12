@@ -675,7 +675,7 @@ export default function PracticePage() {
   return (
     <main
       className={cn(
-        "fixed inset-0 z-0 flex flex-col bg-neutral-950 text-neutral-100",
+        "fixed inset-x-0 top-0 z-0 flex h-[100dvh] flex-col bg-neutral-950 text-neutral-100",
         "overflow-hidden",
       )}
     >
@@ -754,7 +754,7 @@ export default function PracticePage() {
         </section>
 
         <aside className="flex h-full flex-col gap-3 overflow-y-auto pr-1">
-          <WebcamTile webcam={webcam} className="w-full" />
+          <WebcamTile webcam={webcam} className="mx-auto w-full max-[640px]:w-1/2" />
           <MetricCard
             label="Elapsed"
             value={formatElapsed(elapsedSec)}
@@ -833,7 +833,10 @@ function SentenceRow({
   const display = showMasked ? renderMasked(text) : text;
 
   const style: CSSProperties = {
-    fontSize: isCurrent && !isScriptHint ? `calc(${fontPx} * 1.25)` : fontPx,
+    fontSize:
+      isCurrent && !isScriptHint
+        ? `calc(${fontPx} * 1.25 * var(--font-mobile-scale, 1))`
+        : `calc(${fontPx} * var(--font-mobile-scale, 1))`,
     opacity,
   };
 
@@ -1066,7 +1069,7 @@ function ControlPill({
   const isIdle = recordState === "idle";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
+    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-40 flex justify-center">
       <div
         className={cn(
           "pointer-events-auto flex items-center gap-3 rounded-full",
