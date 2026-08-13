@@ -24,6 +24,11 @@ export type SessionResult = {
   fillers: FillerEvent[];
   transcript: string;
   chartSnapshot: string;
+  // "practice" = rehearsing a pasted/loaded script (the default flow).
+  // "record" = a script-free recording (see /practice2?mode=record); has no
+  // script/completeness/score, and is reported on /report3 instead of /report2.
+  mode: "practice" | "record";
+  recordedAt: number;
 };
 
 export type SessionSummary = {

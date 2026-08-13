@@ -26,7 +26,7 @@ type NavItem = {
   disabledTooltip?: string;
 };
 
-const SHELL_BYPASS_PATHS = ["/", "/practice", "/start", "/report2"];
+const SHELL_BYPASS_PATHS = ["/", "/practice", "/start", "/report2", "/report3"];
 
 function isActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;

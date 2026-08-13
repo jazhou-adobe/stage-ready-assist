@@ -3,11 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileUp, RotateCcw, Star, X } from "lucide-react";
+import { FileUp, Mic, RotateCcw, Star, X } from "lucide-react";
 
 import "../landing.css";
 import { useAppStore } from "@/lib/store";
-import type { RecentScript, SessionSummary } from "@/lib/types";
+import { computeAvgWpm } from "@/lib/metrics";
+import {
+  computeCompleteness,
+  computeScore,
+  gradeFromScore,
+  summaryLine,
+} from "@/lib/grading";
+import type { RecentScript, SessionResult, SessionSummary } from "@/lib/types";
 
 const formatDuration = (seconds: number): string => {
   const total = Math.max(0, Math.round(seconds));
@@ -120,6 +127,93 @@ function HistoryCard({ script, now, onSelect, onDelete }: HistoryCardProps) {
   );
 }
 
+const LONG_PAUSE_MS = 1500;
+
+type ReportCardProps = {
+  result: SessionResult;
+  now: number;
+  savedAt?: number;
+};
+
+function ReportCard({ result, now, savedAt }: ReportCardProps) {
+  const avgWpm = computeAvgWpm(result.transcript, result.duration);
+  const fillerCount = result.fillers.length;
+  const longPauseCount = result.pauses.filter(
+    (p) => p.end - p.start >= LONG_PAUSE_MS,
+  ).length;
+  const completeness = computeCompleteness(result.script, result.transcript);
+  const score = computeScore({ avgWpm, fillerCount, longPauseCount, completeness });
+  const grade = gradeFromScore(score);
+  const summary = summaryLine({
+    avgWpm,
+    fillerCount,
+    longPauseCount,
+    completeness,
+    score,
+  });
+
+  return (
+    <Link href="/report2" className="report-card">
+      <span className="grade">{grade}</span>
+
+      <p className="title">{result.scriptTitle?.trim() || "Untitled session"}</p>
+      <p className="meta">
+        {savedAt && now ? `Reviewed ${formatRelative(savedAt, now)}` : "Your most recent session"}
+      </p>
+
+      <p className="preview">{summary}</p>
+
+      <div className="stats">
+        <div>
+          <p className="label">Avg WPM</p>
+          <p className="value">{Math.round(avgWpm)}</p>
+        </div>
+        <div>
+          <p className="label">Duration</p>
+          <p className="value">{formatDuration(result.duration)}</p>
+        </div>
+        <div>
+          <p className="label">Fillers</p>
+          <p className="value">{fillerCount}</p>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// A script-less recording (see /practice2?mode=record) has no completeness or
+// score to show — a simpler card pointing at /report3 instead of /report2.
+function RecordReportCard({ result, now }: { result: SessionResult; now: number }) {
+  const trimmed = result.transcript.trim();
+  const totalWords = trimmed ? trimmed.split(/\s+/).filter(Boolean).length : 0;
+
+  return (
+    <Link href="/report3" className="report-card">
+      <span className="grade">REC</span>
+
+      <p className="title">Recording</p>
+      <p className="meta">
+        {now ? `Reviewed ${formatRelative(result.recordedAt, now)}` : "Your most recent recording"}
+      </p>
+
+      <p className="preview">
+        {totalWords > 0 ? `${totalWords} words captured` : "No speech detected"}
+      </p>
+
+      <div className="stats">
+        <div>
+          <p className="label">Words</p>
+          <p className="value">{totalWords}</p>
+        </div>
+        <div>
+          <p className="label">Duration</p>
+          <p className="value">{formatDuration(result.duration)}</p>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 type QuickStartScript = {
   id: string;
   title: string;
@@ -198,6 +292,7 @@ export default function StartPage() {
   const deleteRecentScript = useAppStore((s) => s.deleteRecentScript);
   const setScript = useAppStore((s) => s.setScript);
   const setScriptTitle = useAppStore((s) => s.setScriptTitle);
+  const result = useAppStore((s) => s.result);
 
   const [titleDraft, setTitleDraft] = useState("");
   const [textDraft, setTextDraft] = useState("");
@@ -213,6 +308,14 @@ export default function StartPage() {
   const canStart = useMemo(
     () => titleDraft.trim().length > 0 && textDraft.trim().length > 0,
     [titleDraft, textDraft],
+  );
+
+  const reportSavedAt = useMemo(
+    () =>
+      result
+        ? recentScripts.find((r) => r.id === result.scriptId)?.lastSession?.savedAt
+        : undefined,
+    [result, recentScripts],
   );
 
   const startPractice = (destination: "/practice" | "/practice2") => {
@@ -335,6 +438,14 @@ export default function StartPage() {
               Start Practicing
             </button>
           </div>
+
+          <div className="overview-record-cta">
+            <p className="overview-record-cta-label">No script yet?</p>
+            <Link href="/practice2?mode=record" className="btn-ghost">
+              <Mic className="h-4 w-4" />
+              Record your script instead
+            </Link>
+          </div>
           <p className="overview-alt-action">
             <button
               type="button"
@@ -346,6 +457,27 @@ export default function StartPage() {
             </button>
           </p>
         </div>
+
+        <section className="reports-section">
+          <div className="section-head">
+            <p className="section-num">Reports</p>
+            <h2 className="section-title">Recent Reports</h2>
+          </div>
+
+          {result ? (
+            <div className="reports-grid">
+              {result.mode === "record" ? (
+                <RecordReportCard result={result} now={now} />
+              ) : (
+                <ReportCard result={result} now={now} savedAt={reportSavedAt} />
+              )}
+            </div>
+          ) : (
+            <p className="history-empty">
+              No reports yet — finish a practice session to see your analytics here.
+            </p>
+          )}
+        </section>
 
         <section className="history-section">
           <div className="section-head">

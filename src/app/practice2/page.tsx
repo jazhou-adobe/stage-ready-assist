@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -8,9 +9,9 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Eye, Moon, Pause, Play, RotateCcw, RotateCw, Square } from "lucide-react";
+import { ArrowLeft, Eye, Moon, Pause, Play, RefreshCcw, RotateCcw, RotateCw, Square } from "lucide-react";
 
 import "../landing.css";
 import { useAudioMetrics } from "@/hooks/useAudioMetrics";
@@ -57,7 +58,20 @@ const renderMasked = (text: string): string => {
 };
 
 export default function Practice2Page() {
+  return (
+    <Suspense fallback={null}>
+      <Practice2PageInner />
+    </Suspense>
+  );
+}
+
+function Practice2PageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // /practice2?mode=record: a script-free recording (see /start's "Record
+  // your script" link) — no pre-defined script, no seek/mask, and the take
+  // is reported on /report3 instead of /report2 (see finishAndReport below).
+  const isRecordMode = searchParams.get("mode") === "record";
 
   const script = useAppStore((s) => s.script);
   const scriptTitle = useAppStore((s) => s.scriptTitle);
@@ -77,7 +91,12 @@ export default function Practice2Page() {
   const webcam = useWebcam();
   const recording = useRecording();
 
-  const sentences = useMemo(() => splitSentences(script), [script]);
+  // Record mode never has a script — ignore whatever happens to be in the
+  // shared store (e.g. left over from a prior practice session).
+  const sentences = useMemo(
+    () => (isRecordMode ? [] : splitSentences(script)),
+    [script, isRecordMode],
+  );
 
   const totalWords = sentences.length
     ? sentences[sentences.length - 1].cumulativeWords
@@ -143,6 +162,11 @@ export default function Practice2Page() {
   const scriptWordsRef = useRef<Array<{ word: string; sentenceIndex: number }>>([]);
   const sentencesRef = useRef(sentences);
   const prevTranscriptLenRef = useRef(0);
+  // Sentence index the current take actually started from (0 = the very
+  // top). Captured once at start() and read at finishAndReport() time —
+  // `manualStartIndex` itself is cleared the moment recording begins, so
+  // this is the only durable record of a partial start for scoring.
+  const startSentenceIndexRef = useRef(0);
 
   useEffect(() => {
     sentenceRefs.current = sentenceRefs.current.slice(0, sentences.length);
@@ -187,11 +211,11 @@ export default function Practice2Page() {
   // Recover script from most recent entry after store rehydrates (refresh, or a
   // direct visit to /practice2 without going through /start first).
   useEffect(() => {
-    if (script.trim() || !recentScripts.length) return;
+    if (isRecordMode || script.trim() || !recentScripts.length) return;
     const latest = recentScripts[0];
     setScriptTitle(latest.title);
     setScript(latest.text);
-  }, [recentScripts, script, setScript, setScriptTitle]);
+  }, [isRecordMode, recentScripts, script, setScript, setScriptTitle]);
 
   // Open the webcam preview as soon as the page loads (idempotent — startAll
   // reuses the same stream).
@@ -256,6 +280,8 @@ export default function Practice2Page() {
   const startAll = useCallback(async () => {
     // A manual start (chosen by scrolling while idle) shifts the word-count
     // baseline so tracking begins from that sentence.
+    startSentenceIndexRef.current =
+      manualStartIndex !== null && manualStartIndex > 0 ? manualStartIndex : 0;
     if (manualStartIndex !== null && manualStartIndex > 0) {
       setWordCountOffset(sentences[manualStartIndex - 1]?.cumulativeWords ?? 0);
     } else {
@@ -381,12 +407,14 @@ export default function Practice2Page() {
 
   useEffect(() => {
     // While idle with a manual start, the scroll handler already positions the
-    // view — don't fight the user by snapping back.
+    // view — don't fight the user by snapping back. Record mode has no
+    // sentences to scroll to at all.
+    if (isRecordMode) return;
     if (recordState === "idle" && manualStartIndex !== null) return;
     const el = sentenceRefs.current[displayedCurrentIndex];
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [displayedCurrentIndex, scriptFontSize, recordState, manualStartIndex]);
+  }, [isRecordMode, displayedCurrentIndex, scriptFontSize, recordState, manualStartIndex]);
 
   const onPause = useCallback(() => {
     audio.pause();
@@ -503,6 +531,27 @@ export default function Practice2Page() {
     const recordingBlob = await recording.stopRecording().catch(() => null);
     setRecordingBlob(recordingBlob);
 
+    if (isRecordMode) {
+      // No script to compare against — save the raw take and skip
+      // completeness/score/grade entirely; /report3 renders it plain.
+      const result: SessionResult = {
+        scriptId: "",
+        scriptTitle: "",
+        script: "",
+        duration: durationSec,
+        samples: finalSamples,
+        pauses: finalPauses,
+        fillers: finalFillers,
+        transcript: finalTranscript,
+        chartSnapshot: "",
+        mode: "record",
+        recordedAt: Date.now(),
+      };
+      setResult(result);
+      router.push("/report3");
+      return;
+    }
+
     const fillerCount = sumValues(finalFillerCounts);
     const pauseCount = finalPauses.length;
     const longPauseCount = finalPauses.filter(
@@ -512,8 +561,19 @@ export default function Practice2Page() {
     const avgVolume = finalSamples.length
       ? finalSamples.reduce((sum, s) => sum + s.volume, 0) / finalSamples.length
       : 0;
+    // A partial start (picked by scrolling while idle) means the presenter
+    // never intended to cover the sentences before it — score and the saved
+    // report against that sub-script, not the full document, so an
+    // intentional skip isn't scored as a miss.
+    const practicedScript =
+      startSentenceIndexRef.current > 0
+        ? sentences
+            .slice(startSentenceIndexRef.current)
+            .map((s) => (s.isHint ? `{{ ${s.text} }}` : s.text))
+            .join(" ")
+        : script;
     const avgWpm = computeAvgWpm(finalTranscript, durationSec);
-    const completeness = computeCompleteness(script, finalTranscript);
+    const completeness = computeCompleteness(practicedScript, finalTranscript);
     const score = computeScore({
       avgWpm,
       fillerCount,
@@ -537,13 +597,15 @@ export default function Practice2Page() {
     const result: SessionResult = {
       scriptId,
       scriptTitle,
-      script,
+      script: practicedScript,
       duration: durationSec,
       samples: finalSamples,
       pauses: finalPauses,
       fillers: finalFillers,
       transcript: finalTranscript,
       chartSnapshot: "",
+      mode: "practice",
+      recordedAt: Date.now(),
     };
     setResult(result);
 
@@ -574,6 +636,8 @@ export default function Practice2Page() {
     router,
     script,
     scriptTitle,
+    sentences,
+    isRecordMode,
   ]);
 
   // A take that never started has nothing to score — exit just returns to
@@ -590,6 +654,34 @@ export default function Practice2Page() {
     }
     finishAndReport();
   }, [recordState, recording, audio, speech, webcam, router, finishAndReport]);
+
+  // Abandons the current take: stops capture, zeroes every metric back to a
+  // fresh state, scrolls the teleprompter to the top, and returns to idle so
+  // the presenter has to press Play again to begin a new take. Webcam stays
+  // live (matches /practice's restart, which also leaves the preview running).
+  const onReset = useCallback(() => {
+    recording.stopRecording().catch(() => {});
+    setRecordingBlob(null);
+    audio.stop();
+    speech.stop();
+
+    mergedSamplesRef.current = [];
+    setMergedSamples([]);
+    fillerCountsRef.current = {};
+    setDisplayedFillerCounts({});
+    startedAtRef.current = null;
+    pausedAccumRef.current = 0;
+    pausedAtRef.current = null;
+    setElapsedSec(0);
+    setWordCountOffset(0);
+    setManualStartIndex(null);
+
+    requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (el) el.scrollTo({ top: 0, behavior: "smooth" });
+      setRecordState("idle");
+    });
+  }, [audio, speech, recording]);
 
   // Manual seek: shifts the word-count baseline by an estimated word delta for
   // `deltaSec` at the current (or a comfortable default) pace, then scrolls
@@ -619,20 +711,24 @@ export default function Practice2Page() {
 
   const sentenceFontPx = `${scriptFontSize}px`;
   const titleText = scriptTitle?.trim() ? scriptTitle : "Untitled script";
-  const wpmDisplay = Math.round(speech.wpm).toString();
-  const pausesDisplay = audio.pauses.length.toString();
+  // speech.wpm / audio.pauses only reset on the hooks' own start() — gate the
+  // display on idle too so a restart reads 0 immediately instead of showing
+  // the abandoned take's numbers until Play is pressed again.
+  const wpmDisplay = recordState === "idle" ? "0" : Math.round(speech.wpm).toString();
+  const pausesDisplay = recordState === "idle" ? "0" : audio.pauses.length.toString();
 
   const totalWordsSpoken = useMemo(() => {
+    if (recordState === "idle") return 0;
     const interimWords = speech.interim
       ? speech.interim.trim().split(/\s+/).filter(Boolean).length
       : 0;
     return speech.spokenWordCount + interimWords;
-  }, [speech.spokenWordCount, speech.interim]);
+  }, [speech.spokenWordCount, speech.interim, recordState]);
 
-  const liveTranscriptText = useMemo(
-    () => [speech.transcript, speech.interim].filter(Boolean).join(" ").trim(),
-    [speech.transcript, speech.interim],
-  );
+  const liveTranscriptText = useMemo(() => {
+    if (recordState === "idle") return "";
+    return [speech.transcript, speech.interim].filter(Boolean).join(" ").trim();
+  }, [speech.transcript, speech.interim, recordState]);
 
   // Auto-scroll the transcript strip to the newest words as they arrive —
   // the fixed 3-line height + smooth scroll gives the "ticking up" effect.
@@ -641,6 +737,16 @@ export default function Practice2Page() {
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [liveTranscriptText]);
+
+  // Record mode shows the transcript in place of the script — auto-scroll
+  // that view to the bottom as new words arrive (there's no "current
+  // sentence" to center, unlike the script teleprompter above).
+  useEffect(() => {
+    if (!isRecordMode) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [isRecordMode, liveTranscriptText]);
 
   const latestVolumePct = useMemo(() => {
     if (mergedSamples.length === 0) return 0;
@@ -720,7 +826,21 @@ export default function Practice2Page() {
         </div>
       )}
 
-      {sentences.length === 0 ? (
+      {isRecordMode ? (
+        <div ref={scrollRef} className="practice2-teleprompter practice2-record-view">
+          <div className="practice2-teleprompter-inner practice2-record-inner">
+            <p
+              className="practice2-record-text"
+              style={{
+                fontSize: `calc(${sentenceFontPx} * ${BASE_FONT_SCALE} * var(--font-mobile-scale, 1))`,
+              }}
+            >
+              {liveTranscriptText ||
+                "Press play and start speaking — your words will appear here."}
+            </p>
+          </div>
+        </div>
+      ) : sentences.length === 0 ? (
         <div className="practice2-empty">
           <p className="practice2-empty-title">No script loaded.</p>
           <p className="practice2-empty-body">
@@ -783,26 +903,30 @@ export default function Practice2Page() {
       )}
 
       <div className="practice2-metrics">
-        <div
-          className="practice2-progress"
-          role="progressbar"
-          aria-label="Script progress"
-          aria-valuenow={Math.round(scriptProgress * 100)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div className="practice2-progress-fill" style={{ width: `${scriptProgress * 100}%` }} />
-        </div>
-        <div
-          ref={transcriptScrollRef}
-          className="practice2-transcript"
-          aria-live="polite"
-          aria-label="Live transcript"
-        >
-          <p className="practice2-transcript-text">
-            {liveTranscriptText || "Start speaking to see your words appear here…"}
-          </p>
-        </div>
+        {!isRecordMode && (
+          <div
+            className="practice2-progress"
+            role="progressbar"
+            aria-label="Script progress"
+            aria-valuenow={Math.round(scriptProgress * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div className="practice2-progress-fill" style={{ width: `${scriptProgress * 100}%` }} />
+          </div>
+        )}
+        {!isRecordMode && (
+          <div
+            ref={transcriptScrollRef}
+            className="practice2-transcript"
+            aria-live="polite"
+            aria-label="Live transcript"
+          >
+            <p className="practice2-transcript-text">
+              {liveTranscriptText || "Start speaking to see your words appear here…"}
+            </p>
+          </div>
+        )}
         <div className="practice2-metrics-inner">
         <div className="practice2-metric">
           <p className="practice2-metric-label">Elapsed</p>
@@ -866,14 +990,25 @@ export default function Practice2Page() {
         <div className="practice2-transport">
           <button
             type="button"
-            className="practice2-skip"
-            onClick={() => skip(-SKIP_SECONDS)}
-            disabled={!canSkip}
-            aria-label={`Back ${SKIP_SECONDS} seconds`}
+            className="practice2-reset"
+            onClick={onReset}
+            aria-label="Reset practice"
+            title="Reset practice"
           >
-            <RotateCcw className="h-4 w-4" />
-            <span>{SKIP_SECONDS}</span>
+            <RefreshCcw className="h-4 w-4" />
           </button>
+          {!isRecordMode && (
+            <button
+              type="button"
+              className="practice2-skip"
+              onClick={() => skip(-SKIP_SECONDS)}
+              disabled={!canSkip}
+              aria-label={`Back ${SKIP_SECONDS} seconds`}
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span>{SKIP_SECONDS}</span>
+            </button>
+          )}
           <button
             type="button"
             className="practice2-play"
@@ -886,16 +1021,18 @@ export default function Practice2Page() {
               <Play className="h-5 w-5" fill="currentColor" />
             )}
           </button>
-          <button
-            type="button"
-            className="practice2-skip"
-            onClick={() => skip(SKIP_SECONDS)}
-            disabled={!canSkip}
-            aria-label={`Forward ${SKIP_SECONDS} seconds`}
-          >
-            <RotateCw className="h-4 w-4" />
-            <span>{SKIP_SECONDS}</span>
-          </button>
+          {!isRecordMode && (
+            <button
+              type="button"
+              className="practice2-skip"
+              onClick={() => skip(SKIP_SECONDS)}
+              disabled={!canSkip}
+              aria-label={`Forward ${SKIP_SECONDS} seconds`}
+            >
+              <RotateCw className="h-4 w-4" />
+              <span>{SKIP_SECONDS}</span>
+            </button>
+          )}
           {recordState !== "idle" && (
             <button
               type="button"
@@ -910,20 +1047,22 @@ export default function Practice2Page() {
         </div>
 
         <div className="practice2-font-controls">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={masked}
-            className="practice2-switch"
-            onClick={toggleMask}
-            title={masked ? "Reveal script" : "Mask script"}
-          >
-            <Eye className="h-4 w-4" />
-            <span className="practice2-switch-label">Mask</span>
-            <span className="practice2-switch-track" aria-hidden="true">
-              <span className="practice2-switch-thumb" />
-            </span>
-          </button>
+          {!isRecordMode && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={masked}
+              className="practice2-switch"
+              onClick={toggleMask}
+              title={masked ? "Reveal script" : "Mask script"}
+            >
+              <Eye className="h-4 w-4" />
+              <span className="practice2-switch-label">Mask</span>
+              <span className="practice2-switch-track" aria-hidden="true">
+                <span className="practice2-switch-thumb" />
+              </span>
+            </button>
+          )}
           <button
             type="button"
             role="switch"

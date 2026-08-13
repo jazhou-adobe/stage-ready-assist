@@ -922,6 +922,22 @@
 }
 .kami-landing .field textarea { min-height: 220px; line-height: 1.55; }
 .kami-landing .overview-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.kami-landing .overview-record-cta {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.kami-landing .overview-record-cta-label {
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--olive);
+  margin: 0;
+}
 .kami-landing .overview-alt-action { margin: 14px 0 0; text-align: center; }
 .kami-landing .link-button {
   font-family: var(--latin-ui);
@@ -1230,6 +1246,7 @@
   .kami-landing .reports-grid { grid-template-columns: 1fr; }
   .kami-landing .quickstart-grid { grid-template-columns: 1fr; }
   .kami-landing .overview-actions { flex-direction: column-reverse; gap: 10px; }
+  .kami-landing .overview-record-cta { flex-direction: column; align-items: stretch; text-align: center; }
 }
 
 /* ========== Practice2 (teleprompter redesign) ========== */
@@ -1319,6 +1336,22 @@
   font-family: var(--serif);
   color: var(--stone);
   font-weight: 400;
+}
+/* Record mode (/practice2?mode=record): the transcript grows top-to-bottom
+ * in place of the script, so it needs normal top-anchored flow instead of
+ * the script view's 42vh centering padding, and dark (near-black) body text
+ * since it's the primary reading content, not a fading rehearsal line. */
+.kami-landing .practice2-record-inner {
+  padding: 96px 24px 220px;
+}
+.kami-landing .practice2-record-text {
+  margin: 0;
+  font-family: var(--prompter-sans);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--near-black);
+  text-align: left;
+  white-space: pre-wrap;
 }
 .kami-landing .practice2-empty {
   flex: 1 1 auto;
@@ -1590,6 +1623,26 @@
 }
 .kami-landing .practice2-skip:disabled { opacity: 0.35; cursor: not-allowed; }
 .kami-landing .practice2-skip:focus-visible { outline: none; box-shadow: 0 0 0 1.5px var(--brand); }
+/* Fixed black regardless of light/dark theme — deliberately breaks from the
+ * ivory transport pill so the destructive reset action reads as distinct. */
+.kami-landing .practice2-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid #141413;
+  background: #141413;
+  color: #f5f4ed;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.kami-landing .practice2-reset:hover { background: #2a2a27; transform: translateY(-1px); }
+.kami-landing .practice2-reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1.5px var(--brand), 0 0 0 4px var(--brand-tint);
+}
 .kami-landing .practice2-play {
   display: inline-flex;
   align-items: center;
@@ -2048,6 +2101,17 @@
   font-size: 16px;
   color: var(--olive);
   margin: 0;
+}
+/* /report3's plain "what you said" block — no per-sentence pace alignment,
+ * just the raw transcript. */
+.kami-landing .report2-transcript-block {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--dark-warm);
+  white-space: pre-wrap;
+  margin: 0;
+  max-width: 760px;
 }
 
 /* Recording download */

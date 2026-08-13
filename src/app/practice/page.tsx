@@ -131,6 +131,11 @@ export default function PracticePage() {
   // Tracks how many transcript tokens were processed in the last skip-detection run,
   // so we only match the *newly finalized* chunk (avoids cross-skip contamination).
   const prevTranscriptLenRef = useRef(0);
+  // Sentence index the current take actually started from (0 = the very
+  // top). Captured once at start() and read at stop()/restart() time —
+  // `randomStartIndex` itself is cleared the moment recording begins, so
+  // this is the only durable record of a partial start for scoring.
+  const startSentenceIndexRef = useRef(0);
 
   useEffect(() => {
     sentenceRefs.current = sentenceRefs.current.slice(0, sentences.length);
@@ -226,6 +231,8 @@ export default function PracticePage() {
   const startAll = useCallback(async () => {
     // If a random start position was chosen, shift the word-count baseline so
     // the teleprompter begins tracking from that sentence.
+    startSentenceIndexRef.current =
+      randomStartIndex !== null && randomStartIndex > 0 ? randomStartIndex : 0;
     if (randomStartIndex !== null && randomStartIndex > 0) {
       const offset = sentences[randomStartIndex - 1]?.cumulativeWords ?? 0;
       setWordCountOffset(offset);
@@ -532,8 +539,19 @@ export default function PracticePage() {
       ? finalSamples.reduce((sum, s) => sum + s.volume, 0) /
         finalSamples.length
       : 0;
+    // A partial start (picked by scrolling while idle, or the shuffle
+    // button) means the presenter never intended to cover the sentences
+    // before it — score and the saved report against that sub-script, not
+    // the full document, so an intentional skip isn't scored as a miss.
+    const practicedScript =
+      startSentenceIndexRef.current > 0
+        ? sentences
+            .slice(startSentenceIndexRef.current)
+            .map((s) => (s.isHint ? `{{ ${s.text} }}` : s.text))
+            .join(" ")
+        : script;
     const avgWpm = computeAvgWpm(finalTranscript, durationSec);
-    const completeness = computeCompleteness(script, finalTranscript);
+    const completeness = computeCompleteness(practicedScript, finalTranscript);
     const score = computeScore({
       avgWpm,
       fillerCount,
@@ -558,13 +576,15 @@ export default function PracticePage() {
     const result: SessionResult = {
       scriptId,
       scriptTitle,
-      script,
+      script: practicedScript,
       duration: durationSec,
       samples: finalSamples,
       pauses: finalPauses,
       fillers: finalFillers,
       transcript: finalTranscript,
       chartSnapshot: chartPng,
+      mode: "practice",
+      recordedAt: Date.now(),
     };
     setResult(result);
 
@@ -596,6 +616,7 @@ export default function PracticePage() {
     router,
     script,
     scriptTitle,
+    sentences,
   ]);
 
   const onConfirmRestart = useCallback(() => {
