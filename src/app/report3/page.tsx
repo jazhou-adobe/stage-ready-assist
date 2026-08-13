@@ -7,7 +7,7 @@ import { Copy, Download, FileText, Sparkles } from "lucide-react";
 import "../landing.css";
 import { useAppStore } from "@/lib/store";
 import { getRecordingBlob, loadRecordingBlob } from "@/lib/recordingBlobStore";
-import { buildRecordPrompt } from "@/lib/recordPrompt";
+import { buildStageScriptPrompt } from "@/lib/recordPrompt";
 import type { SessionResult } from "@/lib/types";
 
 function formatDurationMmSs(seconds: number): string {
@@ -113,7 +113,7 @@ function Report3Content({ result }: { result: SessionResult }) {
 
   const [promptCopied, setPromptCopied] = useState(false);
   const handleCopyPrompt = async () => {
-    const prompt = buildRecordPrompt(result.transcript);
+    const prompt = buildStageScriptPrompt(result.transcript);
     try {
       await navigator.clipboard.writeText(prompt);
       setPromptCopied(true);
@@ -217,12 +217,13 @@ function Report3Content({ result }: { result: SessionResult }) {
             <Sparkles className="h-5 w-5" />
           </div>
           <div className="report2-ai-callout-body">
-            <h2>Want a deeper AI coaching report?</h2>
+            <h2>Want this turned into a stage script?</h2>
             <p>
               Copy a ready-to-use prompt with your transcript already filled
-              in, then paste it into ChatGPT, Claude, or any AI chat for a
-              breakdown of filler words, pacing habits, and practice drills
-              tailored to this recording.
+              in, then paste it into ChatGPT, Claude, or any AI chat.
+              It&apos;ll ask a few quick questions about your audience, tone,
+              and occasion, then rewrite this transcript into a polished
+              script ready to deliver on stage.
             </p>
           </div>
           <button

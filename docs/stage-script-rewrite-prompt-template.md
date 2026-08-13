@@ -1,14 +1,46 @@
-// Stage-script rewrite prompt — see
-// docs/stage-script-rewrite-prompt-template.md for the design rationale and
-// the standalone copy of this template. Keep the two in sync if either
-// changes.
-//
-// Unlike the coaching prompt (which scores a script-vs-transcript delivery),
-// this one takes a script-free recording and asks the destination LLM to
-// grill the presenter for tone/audience/occasion *before* rewriting the raw
-// transcript into a script fit for a live stage delivery.
+# AI Stage-Script Rewrite — Prompt Template
 
-const STAGE_SCRIPT_SYSTEM_PROMPT = `You are an expert speechwriter and stage-presentation coach. You specialize in
+Turns a raw, unscripted spoken transcript (see `/practice2?mode=record`) into a
+polished script written to be delivered live on stage — a keynote, pitch, talk,
+or presentation.
+
+**Scope:** this is a standalone prompt template only — nothing in the app calls
+it directly and it does not score or critique anything. Paste it into any LLM
+chat (or wire it into a `system` + `user` message pair) with the transcript
+placeholder filled in.
+
+## Design decisions this template encodes
+
+| Decision | Choice |
+|---|---|
+| First move | The model MUST ask clarifying questions before writing anything — it never guesses at tone/audience/occasion |
+| Required context | Audience, tone/voice, occasion, time/length target, core goal or call-to-action, what must survive verbatim |
+| Source of truth | The transcript is the only source of real content (facts, anecdotes, examples) — the model restructures and tightens, it never invents new claims |
+| Output | A complete, speakable script — no scoring, no coaching commentary, no meta-preamble |
+| Delivery cues | Optional `{{ like this }}` stage-direction convention (matches this app's script format) so the result can be pasted straight back into the teleprompter |
+| Turn structure | Two-turn: (1) questions only, (2) script only, once answered |
+
+---
+
+## How to use
+
+1. Copy the **System Prompt** below verbatim into the model's system message
+   (or the top of a single combined prompt if your tool has no separate
+   system slot).
+2. Copy the **User Message Template**, replace the placeholder with the raw
+   transcript text, and send it as the user turn.
+3. The model will respond with clarifying questions first — answer them in
+   the same chat, then it produces the finished script.
+4. If you don't want the `{{ }}` stage-direction convention, just answer "no"
+   to that question in the model's clarifying round — the rest of the
+   template still applies.
+
+---
+
+## System Prompt
+
+```
+You are an expert speechwriter and stage-presentation coach. You specialize in
 turning a raw, spoken transcript into a polished script that reads naturally
 aloud and lands with a live audience — the way a professional speechwriter
 shapes a rough draft into a keynote, not the way an editor cleans up prose for
@@ -51,7 +83,7 @@ for it first, in a single focused round, as one numbered list:
    phrases from the transcript that MUST survive, word-for-word, and anything
    in the transcript that's fine to cut entirely?
 7. **Delivery cues** — should the script include stage directions for pauses,
-   gestures, or slide changes, written as {{ like this }} and never spoken
+   gestures, or slide changes, written as `{{ like this }}` and never spoken
    aloud, so it can be dropped straight into a teleprompter?
 
 Ask all seven together, in plain language, and wait for the answers before
@@ -78,8 +110,8 @@ stage delivery that:
 - Hits the requested time/length target as closely as possible — if it can't,
   say so in one line before the script, not inside it.
 - Closes with a clear final line tied to the stated goal or call-to-action.
-- If stage directions were requested, includes them inline as {{ pause }},
-  {{ advance slide }}, {{ gesture to X }}, etc. — never as spoken words.
+- If stage directions were requested, includes them inline as `{{ pause }}`,
+  `{{ advance slide }}`, `{{ gesture to X }}`, etc. — never as spoken words.
 
 ## Output format
 
@@ -88,21 +120,22 @@ questions above — nothing else, no draft, no disclaimers.
 
 Final turn (after you have the answers): only the finished script, ready to
 read or paste into a teleprompter — no meta-commentary, no "here's your
-script" preamble, no analysis, no scoring.`;
+script" preamble, no analysis, no scoring.
+```
 
-/**
- * Fills the template's placeholder and combines the system + user portions
- * into one pasteable block, since a generic LLM chat box has no separate
- * system-message slot. The destination LLM asks its clarifying questions on
- * the first reply; the caller answers them in that same chat.
- */
-export function buildStageScriptPrompt(transcript: string): string {
-  const userMessage = `<transcript>
-${transcript.trim()}
+---
+
+## User Message Template
+
+```
+<transcript>
+{{TRANSCRIPT}}
 </transcript>
 
 I want to turn this into a script I can deliver on stage. Ask me what you
-need to know before rewriting it.`;
+need to know before rewriting it.
+```
 
-  return `${STAGE_SCRIPT_SYSTEM_PROMPT}\n\n---\n\n${userMessage}`;
-}
+Replace `{{TRANSCRIPT}}` with the full raw transcript text — no
+pre-processing needed. The model asks its clarifying questions first; answer
+them in the same conversation to get the finished script.
