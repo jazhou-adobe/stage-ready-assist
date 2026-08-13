@@ -242,7 +242,13 @@ export default function PracticePage() {
     setRandomStartIndex(null);
 
     prevTranscriptLenRef.current = 0;
-    await audio.start();
+    // audio.start() used to be fire-and-forget: it swallowed getUserMedia
+    // failures internally and this always continued on to a "recording"
+    // state, so a denied/unavailable microphone silently produced a take
+    // with no captured voice at all. Bail out here instead — audio.start()
+    // already set a visible error (see permissionError below).
+    const audioOk = await audio.start();
+    if (!audioOk) return;
     speech.start();
     await webcam.start();
     recording.startRecording(audio.getStream());

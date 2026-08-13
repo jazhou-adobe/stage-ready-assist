@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download, FileText, RotateCcw, Save } from "lucide-react";
+import { Copy, Download, FileText, RotateCcw, Save, Sparkles } from "lucide-react";
 
 import "../landing.css";
 import { useAppStore } from "@/lib/store";
@@ -16,6 +16,8 @@ import {
 } from "@/lib/grading";
 import { splitSentences } from "@/lib/script";
 import { paceBucketsForSentences, type PaceBucket } from "@/lib/pace";
+import { alignTranscriptToSentences } from "@/lib/transcriptAlign";
+import { buildCoachingPrompt } from "@/lib/coachingPrompt";
 import type { SessionResult } from "@/lib/types";
 
 const LONG_PAUSE_MS = 1500;
@@ -165,6 +167,38 @@ function Report2Content({
     () => paceBucketsForSentences(result.samples, sentences),
     [result.samples, sentences],
   );
+  const spokenLines = useMemo(
+    () => alignTranscriptToSentences(sentences, result.transcript),
+    [sentences, result.transcript],
+  );
+  const notCoveredCount = useMemo(
+    () => spokenLines.filter((line) => !line).length,
+    [spokenLines],
+  );
+
+  // Strip sentences the presenter never actually got to before handing the
+  // script to the AI prompt — no point asking it to critique lines that were
+  // never attempted. Falls back to the full script if nothing was covered.
+  const coveredScript = useMemo(() => {
+    const covered = sentences
+      .filter((_, i) => Boolean(spokenLines[i]))
+      .map((s) => s.text)
+      .join(" ");
+    return covered || result.script;
+  }, [sentences, spokenLines, result.script]);
+
+  const [promptCopied, setPromptCopied] = useState(false);
+  const handleCopyPrompt = async () => {
+    const prompt = buildCoachingPrompt(coveredScript, result.transcript);
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setPromptCopied(true);
+      window.setTimeout(() => setPromptCopied(false), 2000);
+    } catch {
+      // Clipboard permission denied/unavailable — non-fatal, just no feedback.
+    }
+  };
+  const [showNotCovered, setShowNotCovered] = useState(false);
 
   const avgWpm = useMemo(
     () => computeAvgWpm(result.transcript, result.duration),
@@ -215,6 +249,25 @@ function Report2Content({
 
   const fileBase =
     titleText.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "session";
+
+  // "Save Report" prints to PDF via the browser's native print dialog. Any
+  // not-covered pace lines are force-expanded first so the saved report is
+  // always complete, regardless of what was toggled on screen.
+  const printAfterExpandRef = useRef(false);
+  const handleSaveReport = () => {
+    if (showNotCovered) {
+      window.print();
+      return;
+    }
+    printAfterExpandRef.current = true;
+    setShowNotCovered(true);
+  };
+  useEffect(() => {
+    if (!showNotCovered || !printAfterExpandRef.current) return;
+    printAfterExpandRef.current = false;
+    const id = requestAnimationFrame(() => window.print());
+    return () => cancelAnimationFrame(id);
+  }, [showNotCovered]);
   const triggerDownload = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -231,6 +284,10 @@ function Report2Content({
   };
 
   const transcript = result.transcript.trim();
+  const totalWords = transcript ? transcript.split(/\s+/).filter(Boolean).length : 0;
+  const scriptTotalWords = sentences.length
+    ? sentences[sentences.length - 1].cumulativeWords
+    : 0;
   const hasTranscript = transcript.length > 0;
   const downloadTranscript = () => {
     if (!hasTranscript) return;
@@ -247,7 +304,7 @@ function Report2Content({
           <div className="eyebrow">
             <span>Session Report{dateText ? ` · ${dateText}` : ""}</span>
             <span className="hero-links">
-              <Link href="/dashboard">Dashboard</Link>
+              <Link href="/start">Start</Link>
             </span>
           </div>
 
@@ -258,6 +315,12 @@ function Report2Content({
           <div className="hero-tokens">
             <span>
               <b>{Math.round(avgWpm)}</b> WPM average
+            </span>
+            <span>
+              <b>{totalWords}</b> total words
+            </span>
+            <span>
+              <b>{scriptTotalWords}</b> script words
             </span>
             <span>
               <b>{formatDurationMmSs(result.duration)}</b> duration
@@ -277,8 +340,8 @@ function Report2Content({
             <button
               type="button"
               className="btn-ghost"
-              disabled
-              title="Coming soon"
+              onClick={handleSaveReport}
+              title="Print or save this report as a PDF"
             >
               <Save className="h-4 w-4" />
               Save Report
@@ -312,9 +375,32 @@ function Report2Content({
           </div>
         </header>
 
+        <section className="report2-ai-callout">
+          <div className="report2-ai-callout-icon" aria-hidden="true">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="report2-ai-callout-body">
+            <h2>Want a deeper AI coaching report?</h2>
+            <p>
+              Copy a ready-to-use prompt with your script and transcript
+              already filled in, then paste it into ChatGPT, Claude, or any
+              AI chat for a detailed breakdown of filler words, omissions,
+              pacing habits, and practice drills tailored to this take.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-primary report2-ai-callout-btn"
+            onClick={handleCopyPrompt}
+          >
+            <Copy className="h-4 w-4" />
+            {promptCopied ? "Copied!" : "Copy AI Prompt"}
+          </button>
+        </section>
+
         <section>
           <div className="section-head">
-            <p className="section-num">00 · Overall</p>
+            <p className="section-num">01 · Overall</p>
             <h2 className="section-title">How it went</h2>
           </div>
           <div className="report2-score">
@@ -334,7 +420,7 @@ function Report2Content({
 
         <section>
           <div className="section-head">
-            <p className="section-num">01 · Filler words</p>
+            <p className="section-num">02 · Filler words</p>
             <h2 className="section-title">
               {fillerCount === 0 ? "A clean take" : "Where they slipped in"}
             </h2>
@@ -366,26 +452,63 @@ function Report2Content({
 
         <section>
           <div className="section-head">
-            <p className="section-num">02 · Pace</p>
+            <p className="section-num">03 · Pace</p>
             <h2 className="section-title">Words-per-minute flow</h2>
             <p className="section-lede">
-              Each sentence tinted by delivery speed — read the passage to feel
-              where you rushed or dragged.
+              Each line tinted by delivery speed, with what you actually said
+              lined up underneath.
             </p>
           </div>
 
           {hasPace ? (
             <>
+              <p className="report2-pace-hint">
+                Italic text beneath each line is what you actually said.
+              </p>
               <div className="report2-pace-flow">
-                {sentences.map((sentence, i) => (
-                  <span
-                    key={i}
-                    className={`report2-sentence ${BUCKET_CLASS[buckets[i] ?? "unknown"]}`}
-                  >
-                    {sentence.text}
-                  </span>
-                ))}
+                {sentences.map((sentence, i) => {
+                  const spokenText = spokenLines[i];
+                  const notCovered = !spokenText;
+                  if (notCovered && !showNotCovered) {
+                    return (
+                      <div key={i} className="report2-pace-row is-collapsed">
+                        <span
+                          className={`report2-sentence ${BUCKET_CLASS[buckets[i] ?? "unknown"]}`}
+                        >
+                          {sentence.text}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={i} className="report2-pace-row">
+                      <span
+                        className={`report2-sentence ${BUCKET_CLASS[buckets[i] ?? "unknown"]}`}
+                      >
+                        {sentence.text}
+                      </span>
+                      <div className="report2-spoken">
+                        <span
+                          className={`report2-spoken-text${notCovered ? " is-empty" : ""}`}
+                        >
+                          {spokenText || "Not detected"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+              {notCoveredCount > 0 ? (
+                <button
+                  type="button"
+                  className="link-button report2-pace-toggle"
+                  onClick={() => setShowNotCovered((v) => !v)}
+                >
+                  {showNotCovered
+                    ? "Hide lines not covered"
+                    : `Show ${notCoveredCount} line${notCoveredCount === 1 ? "" : "s"} not covered`}
+                </button>
+              ) : null}
               <div className="report2-pace-bar" aria-hidden="true">
                 {sentences.map((_, i) => (
                   <span

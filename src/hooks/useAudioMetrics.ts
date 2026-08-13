@@ -6,7 +6,7 @@ import type { MetricsSample, PauseEvent } from "@/lib/types";
 export type AudioMetricsState = "idle" | "recording" | "paused" | "stopped";
 
 export type UseAudioMetricsResult = {
-  start: () => Promise<void>;
+  start: () => Promise<boolean>;
   stop: () => void;
   pause: () => void;
   resume: () => void;
@@ -90,8 +90,8 @@ export function useAudioMetrics(): UseAudioMetricsResult {
     silenceStartRef.current = null;
   }, []);
 
-  const start = useCallback(async () => {
-    if (stateRef.current === "recording" || stateRef.current === "paused") return;
+  const start = useCallback(async (): Promise<boolean> => {
+    if (stateRef.current === "recording" || stateRef.current === "paused") return true;
     setError(null);
     samplesRef.current = [];
     pausesRef.current = [];
@@ -184,12 +184,14 @@ export function useAudioMetrics(): UseAudioMetricsResult {
       }, RENDER_TICK_MS);
 
       rafRef.current = requestAnimationFrame(loop);
+      return true;
     } catch (e) {
       const msg =
         e instanceof Error ? e.message : "Failed to access microphone.";
       setError(msg);
       tearDown();
       setStateBoth("stopped");
+      return false;
     }
   }, [setStateBoth, tearDown]);
 
