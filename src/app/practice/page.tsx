@@ -789,7 +789,7 @@ export default function PracticePage() {
             large
           />
           <MetricCard label="WPM" value={wpmDisplay} large />
-          <VolumeCard volume={latestVolume} />
+          <EnergyCard volume={latestVolume} />
           <MetricCard label="Pauses" value={pausesDisplay} />
           <FillerCard fillerCounts={displayedFillerCounts} />
         </aside>
@@ -941,17 +941,17 @@ function MetricCard({
   );
 }
 
-type VolumeTier = "too-low" | "low" | "normal" | "high" | "too-high";
+type EnergyTier = "too-low" | "low" | "normal" | "high" | "too-high";
 
-const VOLUME_TIERS: { max: number; tier: VolumeTier; label: string }[] = [
-  { max: 0.02, tier: "too-low",  label: "Too Low"  },
-  { max: 0.05, tier: "low",      label: "Low"      },
-  { max: 0.14, tier: "normal",   label: "Normal"   },
-  { max: 0.25, tier: "high",     label: "High"     },
-  { max: Infinity, tier: "too-high", label: "Too High" },
+const ENERGY_TIERS: { max: number; tier: EnergyTier; label: string }[] = [
+  { max: 0.02, tier: "too-low",  label: "Exhausted" },
+  { max: 0.05, tier: "low",      label: "Flat"      },
+  { max: 0.14, tier: "normal",   label: "Balanced"  },
+  { max: 0.25, tier: "high",     label: "Strong"    },
+  { max: Infinity, tier: "too-high", label: "Explosive" },
 ];
 
-const TIER_BAR_COLORS: Record<VolumeTier, string> = {
+const TIER_BAR_COLORS: Record<EnergyTier, string> = {
   "too-low":  "bg-slate-500",
   "low":      "bg-amber-400",
   "normal":   "bg-emerald-500",
@@ -959,7 +959,7 @@ const TIER_BAR_COLORS: Record<VolumeTier, string> = {
   "too-high": "bg-red-500",
 };
 
-const TIER_LABEL_COLORS: Record<VolumeTier, string> = {
+const TIER_LABEL_COLORS: Record<EnergyTier, string> = {
   "too-low":  "text-slate-400",
   "low":      "text-amber-400",
   "normal":   "text-emerald-400",
@@ -999,12 +999,12 @@ function FillerCard({ fillerCounts }: { fillerCounts: Record<string, number> }) 
   );
 }
 
-function getVolumeTier(volume: number): { tier: VolumeTier; label: string } {
-  return VOLUME_TIERS.find((t) => volume < t.max) ?? VOLUME_TIERS[VOLUME_TIERS.length - 1];
+function getEnergyTier(volume: number): { tier: EnergyTier; label: string } {
+  return ENERGY_TIERS.find((t) => volume < t.max) ?? ENERGY_TIERS[ENERGY_TIERS.length - 1];
 }
 
-function VolumeCard({ volume }: { volume: number }) {
-  const { tier, label } = getVolumeTier(volume);
+function EnergyCard({ volume }: { volume: number }) {
+  const { tier, label } = getEnergyTier(volume);
   // Map volume to a bar width: 0–0.3 → 0–100%
   const barPct = Math.min(100, Math.round((volume / 0.3) * 100));
 
@@ -1017,7 +1017,7 @@ function VolumeCard({ volume }: { volume: number }) {
     >
       <div className="flex items-baseline justify-between">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-          Volume
+          Energy
         </span>
         <span className={cn("text-base font-semibold", TIER_LABEL_COLORS[tier])}>
           {label}
