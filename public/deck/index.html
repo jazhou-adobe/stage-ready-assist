@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Practice Any Script, Anywhere · PresentPro</title>
+<meta name="description" content="A self-serve guide to PresentPro's rehearsal, coaching, and AI tools — for scripts you already know, and talks you haven't written yet.">
+<meta name="robots" content="noindex, nofollow">
+<style>
+  @font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono.woff2") format("woff2"); font-weight: 400; }
+
+  @page {
+    size: 280mm 158mm;
+    margin: 0;
+    background: #f5f4ed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --parchment:  #f5f4ed;
+    --ivory:      #faf9f5;
+    --near-black: #141413;
+    --dark-warm:  #3d3d3a;
+    --olive:      #504e49;
+    --stone:      #6b6a64;
+    --brand:      #1B365D;
+    --brand-tint: #EEF2F7;
+    --border:     #e8e6dc;
+    --border-soft:#e5e3d8;
+
+    --serif: Charter, Georgia, Palatino, serif;
+    --sans:  var(--serif);
+    --mono:  "JetBrains Mono", "SF Mono", Consolas, monospace;
+
+    --rhythm-module:  14pt;
+    --rhythm-section: 18pt;
+  }
+
+  html { background: var(--olive); }
+
+  body {
+    color: var(--near-black);
+    font-family: var(--serif);
+    font-size: 13pt;
+    line-height: 1.55;
+  }
+
+  .slide {
+    width: 280mm;
+    height: 158mm;
+    padding: 16mm 20mm;
+    background: var(--parchment);
+    break-after: page;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+  }
+  .slide + .slide { margin-top: 6mm; }
+  .slide:last-child { break-after: auto; }
+
+  /* Presentation mode (JS-enabled): one slide visible at a time, scaled to
+     fit the window, with prev/next controls. Without JS this rule never
+     applies and the deck falls back to the plain scrollable document above. */
+  html.deck-mode, html.deck-mode body {
+    height: 100%;
+    overflow: hidden;
+  }
+  html.deck-mode body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  html.deck-mode .slide {
+    display: none;
+    margin-top: 0;
+  }
+  html.deck-mode .slide.is-active {
+    display: flex;
+  }
+
+  .deck-nav {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    display: none;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: var(--near-black);
+    border-radius: 999px;
+    z-index: 20;
+    box-shadow: 0 8px 24px rgba(20, 20, 19, 0.28);
+  }
+  html.deck-mode .deck-nav { display: flex; }
+  .deck-nav button {
+    font-family: var(--mono);
+    font-size: 9.5pt;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--parchment);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8pt 14pt;
+    border-radius: 999px;
+  }
+  .deck-nav button:hover:not(:disabled) { background: rgba(245, 244, 237, 0.14); }
+  .deck-nav button:disabled { opacity: 0.32; cursor: default; }
+  .deck-nav .deck-count {
+    font-family: var(--mono);
+    font-size: 9.5pt;
+    color: var(--parchment);
+    letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums;
+    padding: 0 6pt;
+    min-width: 52pt;
+    text-align: center;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 9.5pt;
+    letter-spacing: 2pt;
+    text-transform: uppercase;
+    color: var(--stone);
+    margin-bottom: 2pt;
+  }
+
+  .page-num {
+    position: absolute;
+    bottom: 10mm;
+    right: 20mm;
+    font-family: var(--mono);
+    font-size: 9pt;
+    color: var(--stone);
+    letter-spacing: 0.5pt;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footer-mark {
+    position: absolute;
+    bottom: 10mm;
+    left: 20mm;
+    font-family: var(--mono);
+    font-size: 9pt;
+    color: var(--stone);
+    letter-spacing: 1.5pt;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 24pt;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.3pt;
+    color: var(--near-black);
+    margin-bottom: var(--rhythm-module);
+  }
+
+  h3 {
+    font-family: var(--serif);
+    font-size: 15pt;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--brand);
+    margin-bottom: 8pt;
+  }
+
+  .lead {
+    font-family: var(--serif);
+    font-size: 12pt;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--olive);
+    margin-bottom: 8pt;
+  }
+
+  .mt {
+    font-family: var(--serif);
+    font-size: 16pt;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--near-black);
+    margin-bottom: 8pt;
+  }
+
+  .ml {
+    font-family: var(--serif);
+    font-size: 24pt;
+    font-weight: 500;
+    color: var(--brand);
+    margin-right: 6pt;
+  }
+
+  .ms {
+    font-family: var(--mono);
+    font-size: 7.5pt;
+    letter-spacing: 1.5pt;
+    text-transform: uppercase;
+    color: var(--stone);
+    border-bottom: 0.3pt solid var(--border);
+    padding-bottom: 4pt;
+    margin-bottom: var(--rhythm-module);
+  }
+
+  .mb {
+    font-family: var(--serif);
+    font-size: 11pt;
+    line-height: 1.55;
+    color: var(--dark-warm);
+    margin-bottom: var(--rhythm-section);
+  }
+
+  .mc {
+    font-family: var(--serif);
+    font-size: 9.5pt;
+    line-height: 1.5;
+    color: var(--olive);
+    border-top: 0.3pt solid var(--border);
+    padding-top: 8pt;
+    margin-top: var(--rhythm-section);
+  }
+
+  .co {
+    font-family: var(--serif);
+    font-size: 11pt;
+    font-weight: 500;
+    line-height: 1.55;
+    color: var(--brand);
+    position: absolute;
+    bottom: 17mm;
+    left: 20mm;
+    right: 20mm;
+  }
+  .co .path { font-family: var(--mono); font-weight: 400; }
+
+  .c2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22pt;
+  }
+
+  /* 2×2 aligned layout: use table, not grid */
+  .t2x2 {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 22pt 18pt;
+    margin: -18pt -22pt;
+  }
+  .t2x2 td {
+    vertical-align: top;
+    width: 50%;
+  }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  table.data th {
+    text-align: left;
+    padding: 6pt 8pt;
+    font-family: var(--mono);
+    font-size: 8pt;
+    letter-spacing: 1pt;
+    text-transform: uppercase;
+    color: var(--stone);
+    border-bottom: 0.75pt solid var(--near-black);
+  }
+  table.data td {
+    padding: 9pt 8pt;
+    border-bottom: 0.3pt solid var(--border);
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+  table.data td:first-child {
+    font-weight: 500;
+    color: var(--brand);
+    width: 22%;
+  }
+  table.data td.neg { color: var(--olive); }
+  table.data td.pos { color: var(--near-black); }
+
+  svg { max-height: 100mm; width: auto; display: block; margin: 0 auto; }
+
+  .cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .cover h1 {
+    font-family: var(--serif);
+    font-size: 38pt;
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.5pt;
+    color: var(--near-black);
+    margin-bottom: 12pt;
+  }
+  .cover .sub {
+    font-family: var(--serif);
+    font-size: 14pt;
+    line-height: 1.45;
+    color: var(--olive);
+    max-width: 50ch;
+    margin-bottom: 32pt;
+  }
+  .cover .meta {
+    font-family: var(--mono);
+    font-size: 9.5pt;
+    color: var(--stone);
+    letter-spacing: 1.5pt;
+    text-transform: uppercase;
+  }
+
+  /* Screenshot row — extends the deck's design system for a materials slide */
+  .shots {
+    display: flex;
+    gap: 16pt;
+    justify-content: center;
+    align-items: flex-end;
+    flex: 1;
+    min-height: 0;
+  }
+  .shot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8pt;
+    max-width: 30%;
+  }
+  .shot-frame {
+    height: 62mm;
+    width: auto;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ivory);
+    border: 0.75pt solid var(--border);
+    border-radius: 3pt;
+    padding: 5pt;
+  }
+  .shot-frame img {
+    max-height: 100%;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+  }
+  .shot figcaption {
+    font-family: var(--serif);
+    font-size: 9.5pt;
+    line-height: 1.4;
+    color: var(--olive);
+    text-align: center;
+  }
+  .shot-num {
+    font-family: var(--mono);
+    font-size: 8pt;
+    color: var(--stone);
+    letter-spacing: 1pt;
+    margin-right: 5pt;
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1 — Cover -->
+<section class="slide cover">
+  <h1>Practice Any Script,<br>Anywhere</h1>
+  <p class="sub">A self-serve guide to PresentPro's rehearsal, coaching, and AI tools — for scripts you already know, and talks you haven't written yet.</p>
+  <p class="meta">PresentPro &nbsp;&middot;&nbsp; Onboarding Guide &nbsp;&middot;&nbsp; 2026</p>
+</section>
+
+<!-- SLIDE 2 — Meet the app (screenshot row) -->
+<section class="slide">
+  <span class="eyebrow">01 &middot; Meet The App</span>
+  <h2>One surface, from first draft to final rehearsal</h2>
+  <p class="lead">Everything below runs in the same browser tab &mdash; no signup, no install, to start.</p>
+
+  <div class="shots">
+    <figure class="shot">
+      <div class="shot-frame"><img src="/landing/start.webp" alt="PresentPro start screen with a pasted script and a &quot;Record your script instead&quot; option"></div>
+      <figcaption><span class="shot-num">01</span>Start &mdash; paste a script, or record one blind</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="shot-frame"><img src="/landing/practice2.webp" alt="PresentPro teleprompter practice view with webcam preview and live metrics"></div>
+      <figcaption><span class="shot-num">02</span>Practice &mdash; teleprompter, webcam, live metrics</figcaption>
+    </figure>
+    <figure class="shot">
+      <div class="shot-frame"><img src="/landing/report2.webp" alt="PresentPro session report with score, pace chart, and AI coaching prompt"></div>
+      <figcaption><span class="shot-num">03</span>Report &mdash; score, filler words, pace, downloadable take</figcaption>
+    </figure>
+  </div>
+
+  <div class="page-num">01</div>
+  <div class="footer-mark">PresentPro</div>
+</section>
+
+<!-- SLIDE 3 — Two use cases (two-column) -->
+<section class="slide">
+  <span class="eyebrow">02 &middot; Use Cases</span>
+  <h2>Two ways to arrive stage-ready</h2>
+  <p class="lead">Whichever door you walk through, the same rehearsal tools are waiting on the other side.</p>
+
+  <div class="c2">
+    <div>
+      <h3>Already have a script</h3>
+      <p class="mb">Paste it in and the teleprompter starts tracking your pace, filler words, and long pauses in real time. Download the take, re-listen to it, then copy a ready-made coaching prompt into ChatGPT or Claude for a deeper report &mdash; and go again.</p>
+    </div>
+    <div>
+      <h3>Starting from nothing</h3>
+      <p class="mb">Do a blind rehearsal with no script on screen &mdash; just say what's in your head. The take is captured and transcribed automatically. Copy a ready-made rewrite prompt to turn that raw transcript into a polished script, then drop it straight back into the teleprompter.</p>
+    </div>
+  </div>
+
+  <div class="page-num">02</div>
+  <div class="footer-mark">PresentPro</div>
+</section>
+
+<!-- SLIDE 4 — The workflow (custom diagram) -->
+<section class="slide">
+  <span class="eyebrow">03 &middot; The Workflow</span>
+  <h2>One loop, two ways in</h2>
+
+  <svg viewBox="0 0 1200 480" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#504e49"/>
+      </marker>
+      <marker id="arrow-brand" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#1B365D"/>
+      </marker>
+    </defs>
+
+    <rect width="100%" height="100%" fill="#f5f4ed"/>
+
+    <!-- ===== Fork from the decision ===== -->
+    <line x1="600" y1="104" x2="600" y2="118" stroke="#504e49" stroke-width="1.2"/>
+    <path d="M 600 118 L 260 118 L 260 150" fill="none" stroke="#504e49" stroke-width="1.2" marker-end="url(#arrow)"/>
+    <path d="M 600 118 L 940 118 L 940 150" fill="none" stroke="#504e49" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+    <!-- Column headers -->
+    <text x="260" y="140" fill="#504e49" font-size="8" font-family="'JetBrains Mono', monospace" text-anchor="middle" letter-spacing="0.14em">SCRIPT READY</text>
+    <text x="940" y="140" fill="#504e49" font-size="8" font-family="'JetBrains Mono', monospace" text-anchor="middle" letter-spacing="0.14em">STARTING FRESH</text>
+
+    <!-- ===== Left column connectors ===== -->
+    <line x1="260" y1="206" x2="260" y2="222" stroke="#504e49" stroke-width="1.2" marker-end="url(#arrow)"/>
+    <line x1="260" y1="278" x2="260" y2="294" stroke="#504e49" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+    <!-- Loop-back: AI coaching loop -> Rehearse & memorize -->
+    <path d="M 150 322 L 90 322 L 90 178 L 150 178" fill="none" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arrow-brand)"/>
+    <text x="76" y="250" fill="#1B365D" font-size="7.5" font-family="'JetBrains Mono', monospace" letter-spacing="0.14em" text-anchor="middle" transform="rotate(-90 76 250)">REPEAT</text>
+
+    <!-- Fan to practice-anywhere outcomes -->
+    <path d="M 260 350 L 155 372" fill="none" stroke="#504e49" stroke-width="1.2" marker-end="url(#arrow)"/>
+    <path d="M 260 350 L 375 372" fill="none" stroke="#504e49" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+    <!-- ===== Right column connectors ===== -->
+    <line x1="940" y1="206" x2="940" y2="222" stroke="#504e49" stroke-width="1.2" marker-end="url(#arrow)"/>
+    <line x1="940" y1="278" x2="940" y2="294" stroke="#504e49" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+    <!-- Convergence: AI script rewrite -> Rehearse & memorize -->
+    <path d="M 940 350 L 940 366 L 600 366 L 600 178 L 370 178" fill="none" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arrow-brand)"/>
+    <text x="770" y="360" fill="#1B365D" font-size="7.5" font-family="'JetBrains Mono', monospace" letter-spacing="0.1em" text-anchor="middle">NOW YOU HAVE A SCRIPT</text>
+
+    <!-- ===== Decision (FOCAL) ===== -->
+    <polygon points="600,20 670,44 670,66 600,104 530,66 530,44" fill="#EEF2F7" stroke="#1B365D" stroke-width="1.2"/>
+    <text x="600" y="50" fill="#141413" font-size="11" font-weight="500" font-family="inherit" text-anchor="middle">Got a script</text>
+    <text x="600" y="64" fill="#141413" font-size="11" font-weight="500" font-family="inherit" text-anchor="middle">already?</text>
+
+    <!-- ===== Left column: script-ready branch ===== -->
+    <rect x="150" y="150" width="220" height="56" rx="6" fill="#faf9f5" stroke="#141413" stroke-width="1"/>
+    <text x="164" y="166" fill="#504e49" font-size="7" font-family="'JetBrains Mono', monospace" letter-spacing="0.14em">STEP 01</text>
+    <text x="260" y="184" fill="#141413" font-size="12" font-weight="500" font-family="inherit" text-anchor="middle">Rehearse &amp; memorize</text>
+    <text x="260" y="199" fill="#504e49" font-size="8.5" font-family="inherit" text-anchor="middle">Teleprompter + live pace/filler tracking</text>
+
+    <rect x="150" y="222" width="220" height="56" rx="6" fill="#faf9f5" stroke="#141413" stroke-width="1"/>
+    <text x="164" y="238" fill="#504e49" font-size="7" font-family="'JetBrains Mono', monospace" letter-spacing="0.14em">STEP 02</text>
+    <text x="260" y="256" fill="#141413" font-size="12" font-weight="500" font-family="inherit" text-anchor="middle">Download &amp; re-listen</text>
+    <text x="260" y="271" fill="#504e49" font-size="8.5" font-family="inherit" text-anchor="middle">Grab the take, review it yourself</text>
+
+    <rect x="150" y="294" width="220" height="56" rx="6" fill="#faf9f5" stroke="#141413" stroke-width="1"/>
+    <text x="164" y="310" fill="#504e49" font-size="7" font-family="'JetBrains Mono', monospace" letter-spacing="0.14em">STEP 03</text>
+    <text x="260" y="328" fill="#141413" font-size="12" font-weight="500" font-family="inherit" text-anchor="middle">AI coaching loop</text>
+    <text x="260" y="343" fill="#504e49" font-size="8.5" font-family="inherit" text-anchor="middle">Paste the prompt, then go again</text>
+
+    <!-- Practice-anywhere outcomes -->
+    <rect x="50" y="372" width="210" height="36" rx="18" fill="#E9E8E1" stroke="#6b6a64" stroke-width="1"/>
+    <text x="155" y="394" fill="#141413" font-size="10.5" font-family="inherit" text-anchor="middle">Chrome extension</text>
+
+    <rect x="290" y="372" width="170" height="36" rx="18" fill="#E9E8E1" stroke="#6b6a64" stroke-width="1"/>
+    <text x="375" y="394" fill="#141413" font-size="10.5" font-family="inherit" text-anchor="middle">On mobile</text>
+
+    <!-- ===== Right column: starting-fresh branch ===== -->
+    <rect x="830" y="150" width="220" height="56" rx="6" fill="#faf9f5" stroke="#141413" stroke-width="1"/>
+    <text x="844" y="166" fill="#504e49" font-size="7" font-family="'JetBrains Mono', monospace" letter-spacing="0.14em">STEP 01</text>
+    <text x="940" y="184" fill="#141413" font-size="12" font-weight="500" font-family="inherit" text-anchor="middle">Blind rehearsal</text>
+    <text x="940" y="199" fill="#504e49" font-size="8.5" font-family="inherit" text-anchor="middle">No script on screen &mdash; just talk</text>
+
+    <rect x="830" y="222" width="220" height="56" rx="6" fill="#faf9f5" stroke="#141413" stroke-width="1"/>
+    <text x="844" y="238" fill="#504e49" font-size="7" font-family="'JetBrains Mono', monospace" letter-spacing="0.14em">STEP 02</text>
+    <text x="940" y="256" fill="#141413" font-size="12" font-weight="500" font-family="inherit" text-anchor="middle">Capture the transcript</text>
+    <text x="940" y="271" fill="#504e49" font-size="8.5" font-family="inherit" text-anchor="middle">The report auto-transcribes it</text>
+
+    <rect x="830" y="294" width="220" height="56" rx="6" fill="#faf9f5" stroke="#141413" stroke-width="1"/>
+    <text x="844" y="310" fill="#504e49" font-size="7" font-family="'JetBrains Mono', monospace" letter-spacing="0.14em">STEP 03</text>
+    <text x="940" y="328" fill="#141413" font-size="12" font-weight="500" font-family="inherit" text-anchor="middle">AI script rewrite</text>
+    <text x="940" y="343" fill="#504e49" font-size="8.5" font-family="inherit" text-anchor="middle">Turns the transcript into a script</text>
+
+    <!-- Legend -->
+    <line x1="40" y1="440" x2="1160" y2="440" stroke="#DEDED7" stroke-width="0.8"/>
+    <text x="40" y="456" fill="#504e49" font-size="8" font-family="'JetBrains Mono', monospace" letter-spacing="0.22em">LEGEND</text>
+
+    <polygon points="230,449 242,455 230,461 218,455" fill="#EEF2F7" stroke="#1B365D" stroke-width="1"/>
+    <text x="252" y="459" fill="#504e49" font-size="8.5" font-family="inherit">Focal decision</text>
+
+    <rect x="400" y="450" width="14" height="10" rx="2" fill="#faf9f5" stroke="#141413" stroke-width="1"/>
+    <text x="422" y="459" fill="#504e49" font-size="8.5" font-family="inherit">Step</text>
+
+    <rect x="500" y="450" width="14" height="10" rx="5" fill="#E9E8E1" stroke="#6b6a64" stroke-width="1"/>
+    <text x="522" y="459" fill="#504e49" font-size="8.5" font-family="inherit">Practice anywhere</text>
+
+    <line x1="680" y1="455" x2="710" y2="455" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arrow-brand)"/>
+    <text x="722" y="459" fill="#504e49" font-size="8.5" font-family="inherit">Produces or repeats a script</text>
+  </svg>
+
+  <p class="mc">Both entry points feed the same rehearse &rarr; review &rarr; AI-coach loop &mdash; and either one ends with a script ready to practice anywhere.</p>
+
+  <div class="page-num">03</div>
+  <div class="footer-mark">PresentPro</div>
+</section>
+
+<!-- SLIDE 5 — Practice anywhere (2x2 modules) -->
+<section class="slide">
+  <span class="eyebrow">04 &middot; Practice Anywhere</span>
+  <h2>Four ways the tools meet you where you are</h2>
+
+  <table class="t2x2">
+    <tr>
+      <td>
+        <div class="mt"><span class="ml">A</span>In the browser</div>
+        <p class="mb">The full teleprompter, webcam preview, and session recording &mdash; live score, pace, and filler-word tracking on every take.</p>
+      </td>
+      <td>
+        <div class="mt"><span class="ml">B</span>Chrome extension</div>
+        <p class="mb">Opens the practice app in a narrow window docked to your browser, so you can rehearse beside whatever page you're already on. Mic, camera, and voice commands work exactly like the full app.</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <div class="mt"><span class="ml">C</span>On mobile</div>
+        <p class="mb">The script and teleprompter text scale down automatically on phone-width screens &mdash; rehearse on a commute or between sets at the gym.</p>
+      </td>
+      <td>
+        <div class="mt"><span class="ml">D</span>The AI coaching loop</div>
+        <p class="mb">Every report page has a one-click prompt, pre-filled with your script and transcript, ready to paste into ChatGPT or Claude for a deeper coaching pass.</p>
+      </td>
+    </tr>
+  </table>
+
+  <div class="page-num">04</div>
+  <div class="footer-mark">PresentPro</div>
+</section>
+
+<!-- SLIDE 6 — The difference (data table) -->
+<section class="slide">
+  <span class="eyebrow">05 &middot; The Difference</span>
+  <h2>What changes when the tool does the watching</h2>
+
+  <table class="data">
+    <tr>
+      <th>Dimension</th>
+      <th>Without PresentPro</th>
+      <th>With PresentPro</th>
+    </tr>
+    <tr>
+      <td>Feedback on delivery</td>
+      <td class="neg">Guess, or ask a colleague to sit through it</td>
+      <td class="pos">Live pace, filler-word, and long-pause tracking on every take</td>
+    </tr>
+    <tr>
+      <td>Reviewing yourself</td>
+      <td class="neg">No record of what you actually said</td>
+      <td class="pos">Download the take and re-listen before the next pass</td>
+    </tr>
+    <tr>
+      <td>No script yet</td>
+      <td class="neg">Stare at a blank page, or wing it cold</td>
+      <td class="pos">Blind-rehearse, capture the transcript, get an AI rewrite</td>
+    </tr>
+    <tr>
+      <td>Where you rehearse</td>
+      <td class="neg">Wherever you can prop up a laptop</td>
+      <td class="pos">Desktop, a docked browser panel, or your phone on the move</td>
+    </tr>
+    <tr>
+      <td>A second opinion</td>
+      <td class="neg">Schedule time with a coach or a peer</td>
+      <td class="pos">A ready-made AI coaching prompt, any time you want another pass</td>
+    </tr>
+  </table>
+
+  <div class="page-num">05</div>
+  <div class="footer-mark">PresentPro</div>
+</section>
+
+<!-- SLIDE 7 — Go further + close -->
+<section class="slide">
+  <span class="eyebrow">06 &middot; Go Further</span>
+  <h2>Ready for the next stage</h2>
+
+  <p class="mb">PresentPro sharpens the rehearsal you already know how to do &mdash; pace, filler words, self-review, and an AI second opinion any time you want another pass. When you're ready for live human coaching, Adobe's Stage Ready Program is worth the time: a well-regarded course whether you're presenting internally or preparing to be a main-stage speaker.</p>
+
+  <div class="co">Bookmark this page &mdash; the tools live at <span class="path">/start</span>. No signup, no install, to begin.</div>
+
+  <div class="page-num">06</div>
+  <div class="footer-mark">PresentPro</div>
+</section>
+
+<nav class="deck-nav" aria-label="Slide navigation">
+  <button type="button" id="deck-prev" aria-label="Previous slide">&larr; Prev</button>
+  <span class="deck-count" id="deck-count">01 / 07</span>
+  <button type="button" id="deck-next" aria-label="Next slide">Next &rarr;</button>
+</nav>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var total = slides.length;
+  if (!total) return;
+
+  var html = document.documentElement;
+  var prevBtn = document.getElementById("deck-prev");
+  var nextBtn = document.getElementById("deck-next");
+  var countEl = document.getElementById("deck-count");
+  var i = 0;
+
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+  function fit(slide) {
+    slide.style.transform = "none";
+    var scale = Math.min(
+      (window.innerWidth - 48) / slide.offsetWidth,
+      (window.innerHeight - 48) / slide.offsetHeight,
+      1
+    );
+    slide.style.transform = "scale(" + scale + ")";
+  }
+
+  function render() {
+    slides.forEach(function (s, idx) {
+      s.classList.toggle("is-active", idx === i);
+    });
+    countEl.textContent = pad(i + 1) + " / " + pad(total);
+    prevBtn.disabled = i === 0;
+    nextBtn.disabled = i === total - 1;
+    fit(slides[i]);
+  }
+
+  function go(delta) {
+    var next = i + delta;
+    if (next < 0 || next >= total) return;
+    i = next;
+    render();
+  }
+
+  prevBtn.addEventListener("click", function () { go(-1); });
+  nextBtn.addEventListener("click", function () { go(1); });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
+      go(1);
+      e.preventDefault();
+    } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+      go(-1);
+      e.preventDefault();
+    } else if (e.key === "Home") {
+      i = 0;
+      render();
+    } else if (e.key === "End") {
+      i = total - 1;
+      render();
+    }
+  });
+
+  window.addEventListener("resize", function () { fit(slides[i]); });
+
+  html.classList.add("deck-mode");
+  render();
+})();
+</script>
+
+</body>
+</html>

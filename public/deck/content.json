@@ -1,0 +1,92 @@
+{
+  "type": "slides",
+  "lang": "en",
+  "brief": {
+    "audience": "Potential PresentPro users reaching this deck via a bookmarked link inside the app; no presenter, async self-serve read",
+    "job": "Show what the rehearsal, coaching, and AI tools do and how the two use cases (already have a script / starting from nothing) map onto them, then point toward the Adobe Stage Ready program as a next step",
+    "template": "slides-weasy-en",
+    "formats": ["html"],
+    "page_target": 7,
+    "narrative": "Meet the app -> two entry points -> the one workflow that ties them together -> where you can run it -> why it beats going it alone -> what's next",
+    "required_facts": [
+      "teleprompter + WPM/filler/pause tracking",
+      "downloadable session recording",
+      "AI coaching prompt (report2, copy to ChatGPT/Claude)",
+      "blind rehearsal / record mode (practice2?mode=record)",
+      "AI stage-script rewrite prompt (report3)",
+      "Chrome extension docked popup window",
+      "mobile-responsive teleprompter scaling",
+      "no signup / no install to start"
+    ],
+    "required_assets": ["/landing/start.webp", "/landing/practice2.webp", "/landing/report2.webp"],
+    "acceptance_checks": ["ghost-deck test: titles alone tell the argument", "one evidence shape per slide", "all placeholders filled"],
+    "preserve": [],
+    "explicit_deviations": [
+      "added a screenshot-row slide layout (not in the base template) using the same tokens",
+      "added a custom flowchart diagram (kami diagrams.md flowchart primitive, hand-adapted to this app's two-branch loop) instead of the generic decision-diamond demo"
+    ]
+  },
+  "content": {
+    "title": "Practice Any Script, Anywhere",
+    "subtitle": "A self-serve guide to PresentPro's rehearsal, coaching, and AI tools",
+    "audience": "Potential users reaching this via a bookmarked link, async, self-serve",
+    "slides": [
+      { "layout": "cover", "title": "Practice Any Script, Anywhere" },
+      {
+        "layout": "content",
+        "eyebrow": "01 · Meet The App",
+        "title": "One surface, from first draft to final rehearsal",
+        "items": [
+          "Start — paste a script, or record one blind",
+          "Practice — teleprompter, webcam, live metrics",
+          "Report — score, filler words, pace, downloadable recording"
+        ],
+        "cap": "No signup, no install, to start."
+      },
+      {
+        "layout": "content",
+        "eyebrow": "02 · Use Cases",
+        "title": "Two ways to arrive stage-ready",
+        "items": [
+          "Already have a script: rehearse against live pace/filler tracking, download, re-listen, loop in AI coaching",
+          "Starting from nothing: blind-rehearse, capture the transcript, get an AI rewrite into a real script"
+        ]
+      },
+      {
+        "layout": "content",
+        "eyebrow": "03 · The Workflow",
+        "title": "One loop, two ways in",
+        "chart": { "kind": "flowchart", "insight": "Both entry points feed the same rehearse -> review -> AI-coach loop, and either one ends with a script ready to practice anywhere." }
+      },
+      {
+        "layout": "content",
+        "eyebrow": "04 · Practice Anywhere",
+        "title": "Four ways the tools meet you where you are",
+        "items": [
+          "In the browser: full teleprompter, webcam, session recording",
+          "Chrome extension: docked popup window beside whatever you're working on",
+          "On mobile: teleprompter text scales down for a commute or the gym",
+          "AI coaching loop: one-click prompt pre-filled with script + transcript"
+        ]
+      },
+      {
+        "layout": "content",
+        "eyebrow": "05 · The Difference",
+        "title": "What changes when the tool does the watching",
+        "items": [
+          "Feedback on delivery: guessing vs. live pace/filler/pause tracking",
+          "Reviewing yourself: no record vs. a downloadable take to re-listen to",
+          "No script yet: a blank page vs. blind rehearsal + AI rewrite",
+          "Where you can rehearse: wherever you can prop up a laptop vs. desktop, docked panel, or phone",
+          "A second opinion: scheduling a coach vs. an AI coaching prompt any time"
+        ]
+      },
+      {
+        "layout": "close",
+        "eyebrow": "06 · Go Further",
+        "title": "Ready for the next stage",
+        "cap": "Bookmark this page — the tools live at /start."
+      }
+    ]
+  }
+}
